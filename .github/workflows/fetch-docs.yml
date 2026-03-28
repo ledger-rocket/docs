@@ -14,16 +14,31 @@ jobs:
         with:
           ref: claude/update-repo-docs-AUgYe
 
-      - name: Fetch event-service docs
+      - name: Debug token
         run: |
-          git fetch https://x-access-token:${{ secrets.CROSS_REPO_PAT }}@github.com/ledger-rocket/event-service.git claude/download-docs-locally-w8igP
-          git checkout FETCH_HEAD -- docs/mintlify/
+          if [ -z "${{ secrets.CROSS_REPO_PAT }}" ]; then
+            echo "::error::CROSS_REPO_PAT secret is empty!"
+            exit 1
+          fi
+          echo "Token length: ${#TOKEN}"
+          echo "Token prefix: ${TOKEN:0:4}..."
+        env:
+          TOKEN: ${{ secrets.CROSS_REPO_PAT }}
+
+      - name: Checkout event-service docs
+        uses: actions/checkout@v4
+        with:
+          repository: ledger-rocket/event-service
+          ref: claude/download-docs-locally-w8igP
+          token: ${{ secrets.CROSS_REPO_PAT }}
+          path: event-service-docs
+          sparse-checkout: docs/mintlify
 
       - name: Remove scaffold and move docs into place
         run: |
           rm -rf essentials/ ai-tools/ snippets/ api-reference/endpoint/ api-reference/openapi.json api-reference/introduction.mdx quickstart.mdx development.mdx index.mdx
-          cp -r docs/mintlify/* .
-          rm -rf docs/
+          cp -r event-service-docs/docs/mintlify/* .
+          rm -rf event-service-docs/
 
       - name: Commit and push
         run: |
