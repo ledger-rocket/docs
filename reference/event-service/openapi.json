@@ -1,0 +1,3970 @@
+{
+    "components": {
+        "schemas": {
+            "AccountType": {
+                "description": "DebitAccountType corresponds to the JSON schema field \"debit_account_type\".",
+                "enum": [
+                    "ASSET",
+                    "EQUITY",
+                    "EXPENSE",
+                    "LIABILITY",
+                    "REVENUE",
+                    "SUPPLEMENTAL"
+                ],
+                "example": "ASSET",
+                "type": "string",
+                "x-enum-varnames": [
+                    "AccountTypeASSET",
+                    "AccountTypeEQUITY",
+                    "AccountTypeEXPENSE",
+                    "AccountTypeLIABILITY",
+                    "AccountTypeREVENUE",
+                    "AccountTypeSUPPLEMENTAL"
+                ]
+            },
+            "AccountingTreatment": {
+                "properties": {
+                    "description": {
+                        "description": "Human-readable description of the accounting treatment",
+                        "maxLength": 300,
+                        "type": "string"
+                    },
+                    "policy_refs": {
+                        "description": "References to accounting policy documents",
+                        "items": {
+                            "$ref": "#/components/schemas/PolicyRef"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/TreatmentType"
+                    }
+                },
+                "required": [
+                    "description",
+                    "policy_refs",
+                    "type"
+                ],
+                "type": "object"
+            },
+            "AdminOutboxListResponse": {
+                "properties": {
+                    "count": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "records": {
+                        "items": {
+                            "$ref": "#/components/schemas/AdminOutboxRecordSummary"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "count",
+                    "records"
+                ],
+                "type": "object"
+            },
+            "AdminOutboxRecordSummary": {
+                "properties": {
+                    "committed_at": {
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "event": {
+                        "$ref": "#/components/schemas/Event"
+                    },
+                    "event_id": {
+                        "type": "string"
+                    },
+                    "failed_at": {
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "failure_reason": {
+                        "type": "string"
+                    },
+                    "next_retry_at": {
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "prepared_at": {
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "published_at": {
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "retry_count": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "state": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "event_id",
+                    "prepared_at",
+                    "state"
+                ],
+                "type": "object"
+            },
+            "AdminOutboxStatsResponse": {
+                "properties": {
+                    "committed": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "failed": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "max_retry_count": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "oldest_committed_age": {
+                        "type": "string"
+                    },
+                    "oldest_prepared_age": {
+                        "type": "string"
+                    },
+                    "prepared": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "published": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "retrying_count": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "total": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "committed",
+                    "failed",
+                    "max_retry_count",
+                    "oldest_committed_age",
+                    "oldest_prepared_age",
+                    "prepared",
+                    "published",
+                    "retrying_count",
+                    "total"
+                ],
+                "type": "object"
+            },
+            "AuditState": {
+                "enum": [
+                    "DEPRECATED",
+                    "DELETED",
+                    "DRAFT",
+                    "LIVE",
+                    "PENDING_APPROVAL",
+                    "REJECTED"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "AuditStateDEPRECATED",
+                    "AuditStateDELETED",
+                    "AuditStateDRAFT",
+                    "AuditStateLIVE",
+                    "AuditStatePENDINGAPPROVAL",
+                    "AuditStateREJECTED"
+                ]
+            },
+            "Check": {
+                "properties": {
+                    "duration": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "last_checked": {
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/Status"
+                    }
+                },
+                "required": [
+                    "duration",
+                    "last_checked",
+                    "name",
+                    "status"
+                ],
+                "type": "object"
+            },
+            "DirectiveTag": {
+                "enum": [
+                    "manual_rollup_override",
+                    "skip_rollup_processing",
+                    "seed_mode"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "DirectiveManualRollupOverride",
+                    "DirectiveSkipRollupProcessing",
+                    "DirectiveSeedMode"
+                ]
+            },
+            "EnrichedTransfer": {
+                "properties": {
+                    "amount": {
+                        "description": "Transfer amount in minor units",
+                        "example": 150000,
+                        "maximum": 9007199254740992,
+                        "type": "integer"
+                    },
+                    "credit_account_code": {
+                        "description": "Account code in decimal form (1-5 digits)",
+                        "example": "4001",
+                        "type": "string"
+                    },
+                    "credit_account_id": {
+                        "description": "Credit account UUID",
+                        "example": "0192b4f0-7abc-7def-8000-000000000002",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "credit_account_name": {
+                        "description": "Human-readable account name",
+                        "example": "Revenue Account",
+                        "type": "string"
+                    },
+                    "credit_account_type": {
+                        "$ref": "#/components/schemas/AccountType"
+                    },
+                    "currency_code": {
+                        "description": "Currency code from ledger (e.g., \"USD\", \"EUR\")",
+                        "example": "USD",
+                        "type": "string"
+                    },
+                    "currency_scale": {
+                        "description": "Currency scale from ledger (e.g., 100 for cents, 1 for whole units)",
+                        "example": 100,
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "debit_account_code": {
+                        "description": "Account code in decimal form (1-5 digits)",
+                        "example": "1001",
+                        "type": "string"
+                    },
+                    "debit_account_id": {
+                        "description": "Debit account UUID",
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "debit_account_name": {
+                        "description": "Human-readable account name",
+                        "example": "Cash Account",
+                        "type": "string"
+                    },
+                    "debit_account_type": {
+                        "$ref": "#/components/schemas/AccountType"
+                    },
+                    "event_id": {
+                        "description": "Event ID that originated this transfer",
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "is_rollup": {
+                        "description": "Whether this is a rollup transfer",
+                        "example": false,
+                        "type": "boolean"
+                    },
+                    "leg_number": {
+                        "description": "Template leg that generated this transfer",
+                        "example": 1,
+                        "maximum": 63,
+                        "type": "integer"
+                    },
+                    "occurred_at": {
+                        "description": "Unix timestamp when event occurred",
+                        "example": 1700000000000,
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "template_event_type": {
+                        "description": "Template event type",
+                        "example": "TRANSFER",
+                        "type": "string"
+                    },
+                    "template_name": {
+                        "description": "Template name",
+                        "example": "payments.core",
+                        "type": "string"
+                    },
+                    "template_product": {
+                        "description": "Template product (e.g., \"PAYMENT\", \"FX\", \"CORE\")",
+                        "example": "PAYMENTS",
+                        "type": "string"
+                    },
+                    "transfer_id": {
+                        "description": "Transfer ID from TigerBeetle",
+                        "example": "0192b4f0-7abc-7def-8000-000000000010",
+                        "format": "uuid",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "amount",
+                    "credit_account_id",
+                    "currency_code",
+                    "currency_scale",
+                    "debit_account_id",
+                    "event_id",
+                    "is_rollup",
+                    "leg_number",
+                    "occurred_at",
+                    "template_event_type",
+                    "template_name",
+                    "template_product",
+                    "transfer_id"
+                ],
+                "type": "object"
+            },
+            "EnrichedTransferResponse": {
+                "properties": {
+                    "transfer": {
+                        "$ref": "#/components/schemas/EnrichedTransfer"
+                    }
+                },
+                "required": [
+                    "transfer"
+                ],
+                "type": "object"
+            },
+            "EnrichedTransfersListResponse": {
+                "properties": {
+                    "count": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "has_more": {
+                        "type": "boolean"
+                    },
+                    "next_cursor": {
+                        "type": "string"
+                    },
+                    "timestamp_max": {
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "transfers": {
+                        "items": {
+                            "$ref": "#/components/schemas/EnrichedTransfer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "count",
+                    "has_more",
+                    "transfers"
+                ],
+                "type": "object"
+            },
+            "Event": {
+                "description": "Optional test event to validate against template",
+                "properties": {
+                    "$schema": {
+                        "description": "Identifier for the schema used to construct this event",
+                        "example": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+                        "type": "string"
+                    },
+                    "accounts": {
+                        "description": "Account mappings for the event. Each account must have a unique purpose value.\nMay be empty when all accounts are template-defined (ConstantAccounts).",
+                        "items": {
+                            "$ref": "#/components/schemas/EventAccount"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "amount": {
+                        "description": "Transaction amount in minor currency units (cents, pence, satoshis)",
+                        "example": 100000,
+                        "maximum": 9007199254740992,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "directives": {
+                        "description": "Processing directives (unique). Replaces legacy reserved keys in extra_metadata.",
+                        "example": [
+                            "skip_rollup_processing"
+                        ],
+                        "items": {
+                            "$ref": "#/components/schemas/DirectiveTag"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "event_id": {
+                        "description": "UUID v7 for idempotency and natural time ordering. This is the idempotency key \u2014 on failure, always retry with the same event_id. Never generate a new event_id for a retry.",
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "event_source": {
+                        "description": "System or service that originated the event",
+                        "example": "docs_example",
+                        "type": "string"
+                    },
+                    "extra_metadata": {
+                        "$ref": "#/components/schemas/ExtraMetadata"
+                    },
+                    "ledger_timestamp": {
+                        "description": "Optional event-level ledger timestamp used for seeding/backfill; distinct from occurred_at",
+                        "maximum": 4102444800000,
+                        "minimum": 0,
+                        "type": "integer"
+                    },
+                    "occurred_at": {
+                        "description": "When business event occurred",
+                        "example": 1760000000000,
+                        "maximum": 4102444800000,
+                        "minimum": 0,
+                        "type": "integer"
+                    },
+                    "original_event_id": {
+                        "description": "First event in the series (optional linkage for analytics)",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "previous_event_id": {
+                        "description": "Immediate predecessor event in the chain (optional linkage for analytics)",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "site_id": {
+                        "description": "SiteID corresponds to the JSON schema field \"site_id\".",
+                        "example": 1,
+                        "maximum": 2147483647,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "template_ids": {
+                        "description": "Array of template IDs to process atomically (ALL must succeed or ALL fail)",
+                        "example": [
+                            532
+                        ],
+                        "items": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "$schema",
+                    "amount",
+                    "event_id",
+                    "event_source",
+                    "occurred_at",
+                    "site_id",
+                    "template_ids"
+                ],
+                "type": "object"
+            },
+            "EventAccount": {
+                "properties": {
+                    "account_id": {
+                        "description": "UUID of the account (with cached string form)",
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "purpose": {
+                        "description": "Account purpose matching template requirements",
+                        "example": "from_account",
+                        "maxLength": 50,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "account_id",
+                    "purpose"
+                ],
+                "type": "object"
+            },
+            "EventEcho": {
+                "description": "Minimal event echo for the validated event.",
+                "properties": {
+                    "amount": {
+                        "example": 100000,
+                        "maximum": 9007199254740992,
+                        "type": "integer"
+                    },
+                    "event_id": {
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "occurred_at": {
+                        "example": 1760000000000,
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "site_id": {
+                        "example": 1,
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "template_ids": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "amount",
+                    "event_id",
+                    "occurred_at",
+                    "site_id",
+                    "template_ids"
+                ],
+                "type": "object"
+            },
+            "EventOutboxResponse": {
+                "properties": {
+                    "committed_at": {
+                        "example": 1760000000001,
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "event_id": {
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "type": "string"
+                    },
+                    "prepared_at": {
+                        "example": 1760000000000,
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "published_at": {
+                        "example": 1760000000100,
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "state": {
+                        "example": "COMMITTED",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "committed_at",
+                    "event_id",
+                    "prepared_at",
+                    "published_at",
+                    "state"
+                ],
+                "type": "object"
+            },
+            "EventValidationAccountTrace": {
+                "properties": {
+                    "account_code": {
+                        "maximum": 65535,
+                        "type": "integer"
+                    },
+                    "account_code_name": {
+                        "type": "string"
+                    },
+                    "account_id": {
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "account_name": {
+                        "type": "string"
+                    },
+                    "account_type": {
+                        "type": "string"
+                    },
+                    "entity_name": {
+                        "type": "string"
+                    },
+                    "is_rollup": {
+                        "type": "boolean"
+                    },
+                    "ledger_id": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "account_code",
+                    "account_code_name",
+                    "account_id",
+                    "account_name",
+                    "account_type",
+                    "entity_name",
+                    "is_rollup",
+                    "ledger_id"
+                ],
+                "type": "object"
+            },
+            "EventValidationLegTrace": {
+                "properties": {
+                    "amount": {
+                        "maximum": 9007199254740992,
+                        "type": "integer"
+                    },
+                    "code": {
+                        "maximum": 65535,
+                        "type": "integer"
+                    },
+                    "condition_result": {
+                        "type": "boolean"
+                    },
+                    "credit_account_id": {
+                        "type": "string"
+                    },
+                    "debit_account_id": {
+                        "type": "string"
+                    },
+                    "fired": {
+                        "type": "boolean"
+                    },
+                    "leg_number": {
+                        "maximum": 1000,
+                        "type": "integer"
+                    },
+                    "skip_reason": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "fired",
+                    "leg_number"
+                ],
+                "type": "object"
+            },
+            "EventValidationTemplateTrace": {
+                "properties": {
+                    "accounts": {
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/EventValidationAccountTrace"
+                        },
+                        "type": "object"
+                    },
+                    "legs": {
+                        "items": {
+                            "$ref": "#/components/schemas/EventValidationLegTrace"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "template_id": {
+                        "maximum": 65535,
+                        "type": "integer"
+                    },
+                    "template_name": {
+                        "type": "string"
+                    },
+                    "validations": {
+                        "items": {
+                            "$ref": "#/components/schemas/EventValidationValidationTrace"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "variables": {
+                        "items": {
+                            "$ref": "#/components/schemas/EventValidationVariableTrace"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "legs",
+                    "template_id",
+                    "template_name",
+                    "validations",
+                    "variables"
+                ],
+                "type": "object"
+            },
+            "EventValidationTrace": {
+                "description": "Optional execution trace when explain mode is requested",
+                "properties": {
+                    "templates": {
+                        "items": {
+                            "$ref": "#/components/schemas/EventValidationTemplateTrace"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "templates"
+                ],
+                "type": "object"
+            },
+            "EventValidationValidationTrace": {
+                "properties": {
+                    "error": {
+                        "type": "string"
+                    },
+                    "expression": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "passed": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "expression",
+                    "name",
+                    "passed"
+                ],
+                "type": "object"
+            },
+            "EventValidationVariableTrace": {
+                "properties": {
+                    "expression": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "value": {}
+                },
+                "required": [
+                    "expression",
+                    "name",
+                    "value"
+                ],
+                "type": "object"
+            },
+            "EventValidationsPostResponse": {
+                "properties": {
+                    "errors": {
+                        "description": "Validation error messages if any",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "event": {
+                        "$ref": "#/components/schemas/EventEcho"
+                    },
+                    "trace": {
+                        "$ref": "#/components/schemas/EventValidationTrace"
+                    },
+                    "transfers": {
+                        "description": "Transfers that WOULD be generated if event were processed",
+                        "items": {
+                            "$ref": "#/components/schemas/Transfer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "validation_status": {
+                        "$ref": "#/components/schemas/EventValidationsPostResponseValidationStatus"
+                    }
+                },
+                "required": [
+                    "errors",
+                    "event",
+                    "transfers",
+                    "validation_status"
+                ],
+                "type": "object"
+            },
+            "EventValidationsPostResponseValidationStatus": {
+                "description": "Overall validation result",
+                "enum": [
+                    "INVALID",
+                    "VALID"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "EventValidationsPostResponseValidationStatusINVALID",
+                    "EventValidationsPostResponseValidationStatusVALID"
+                ]
+            },
+            "EventsPostResponse": {
+                "properties": {
+                    "event_id": {
+                        "description": "EventID corresponds to the JSON schema field \"event_id\".",
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "processed_at": {
+                        "description": "Unix timestamp in milliseconds (UTC) when event processing was initiated.",
+                        "example": 1760000000123,
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/EventsPostResponseStatus"
+                    },
+                    "warnings": {
+                        "description": "Optional warnings (e.g., timestamp override)",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "event_id",
+                    "processed_at",
+                    "status"
+                ],
+                "type": "object"
+            },
+            "EventsPostResponseStatus": {
+                "description": "Acknowledgement status at response time. POST /events always returns COMMITTED.",
+                "enum": [
+                    "COMMITTED"
+                ],
+                "example": "COMMITTED",
+                "type": "string",
+                "x-enum-varnames": [
+                    "EventsPostResponseStatusCommitted"
+                ]
+            },
+            "ExpectedTransfer": {
+                "properties": {
+                    "amount": {
+                        "description": "Amount in minor units (must be > 0)",
+                        "example": 150000,
+                        "maximum": 9007199254740992,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "credit_account_id": {
+                        "description": "Credit account UUID",
+                        "example": "0192b4f0-7abc-7def-8000-000000000002",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "debit_account_id": {
+                        "description": "Debit account UUID",
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "leg_number": {
+                        "description": "Template leg number that produced this transfer",
+                        "example": 1,
+                        "maximum": 63,
+                        "minimum": 1,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "amount",
+                    "credit_account_id",
+                    "debit_account_id",
+                    "leg_number"
+                ],
+                "type": "object"
+            },
+            "ExtraMetadata": {
+                "additionalProperties": true,
+                "description": "Additional context validated against template's metadata_schema",
+                "type": "object"
+            },
+            "FinancialImpact": {
+                "description": "Net impact on this account type",
+                "enum": [
+                    "decrease",
+                    "decrease_or_no_impact",
+                    "increase",
+                    "increase_or_no_impact",
+                    "no_impact",
+                    "increase_or_decrease",
+                    "any"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "FinancialImpactDecrease",
+                    "FinancialImpactDecreaseOrNoImpact",
+                    "FinancialImpactIncrease",
+                    "FinancialImpactIncreaseOrNoImpact",
+                    "FinancialImpactNoImpact",
+                    "FinancialImpactIncreaseOrDecrease",
+                    "FinancialImpactAny"
+                ]
+            },
+            "PolicyRef": {
+                "properties": {
+                    "id": {
+                        "description": "Clean policy ID (no URI scheme)\nExamples: \"IFRS9.B5.4.1\", \"IAS32.DEPOSITS\", \"INT/FEES-001\"",
+                        "type": "string"
+                    },
+                    "version": {
+                        "description": "Optional explicit version (if nil, resolve active version)",
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id"
+                ],
+                "type": "object"
+            },
+            "ProblemDetails": {
+                "properties": {
+                    "detail": {
+                        "description": "A human-readable explanation specific to this occurrence of the problem.",
+                        "example": "invalid request body",
+                        "type": "string"
+                    },
+                    "errors": {
+                        "description": "Optional structured error details for field-level validation failures.",
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationErrorDetail"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "instance": {
+                        "description": "A URI reference that identifies the specific occurrence of the problem.\nThis service uses the request path.",
+                        "example": "/api/v1/events",
+                        "type": "string"
+                    },
+                    "status": {
+                        "description": "The HTTP status code generated by the origin server.",
+                        "example": 400,
+                        "maximum": 599,
+                        "type": "integer"
+                    },
+                    "title": {
+                        "description": "A short, human-readable summary of the problem type.\nUse the HTTP status text (e.g., \"Bad Request\").",
+                        "example": "Bad Request",
+                        "type": "string"
+                    },
+                    "type": {
+                        "description": "A URI reference that identifies the problem type.\nThe service uses service-scoped problem type URIs.",
+                        "example": "https://ledger-rocket.dev/event-service/problems/events/invalid-request",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "Response": {
+                "properties": {
+                    "checks": {
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Check"
+                        },
+                        "type": "object"
+                    },
+                    "checks_list": {
+                        "description": "ChecksList provides a stable, human-friendly ordering of checks for UIs.\nIt mirrors the entries in Checks but in a consistent order (by name).",
+                        "items": {
+                            "properties": {
+                                "check": {
+                                    "$ref": "#/components/schemas/Check"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "check",
+                                "name"
+                            ],
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "failed_templates": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Templates that failed to load with errors",
+                        "type": "object"
+                    },
+                    "service": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/Status"
+                    },
+                    "templates": {
+                        "description": "List of loaded templates",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateInfo"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "uptime": {
+                        "description": "Uptime in seconds",
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "version": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "checks",
+                    "failed_templates",
+                    "service",
+                    "status",
+                    "templates",
+                    "uptime",
+                    "version"
+                ],
+                "type": "object"
+            },
+            "ServiceInfoResponse": {
+                "properties": {
+                    "health": {
+                        "example": [
+                            "GET /livez",
+                            "GET /readyz"
+                        ],
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "service": {
+                        "example": "event-service",
+                        "type": "string"
+                    },
+                    "version": {
+                        "example": "dev",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "health",
+                    "service",
+                    "version"
+                ],
+                "type": "object"
+            },
+            "Status": {
+                "enum": [
+                    "healthy",
+                    "unhealthy",
+                    "unknown"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "StatusHealthy",
+                    "StatusUnhealthy",
+                    "StatusUnknown"
+                ]
+            },
+            "Template": {
+                "description": "Template corresponds to the JSON schema field \"template\".",
+                "properties": {
+                    "$schema": {
+                        "description": "Descriptor identifying the JSON schema that defines this template payload",
+                        "type": "string"
+                    },
+                    "account_code_validations": {
+                        "description": "Validations for account codes by purpose",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateAccountCodeValidation"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "accounting_treatments": {
+                        "description": "Accounting treatment classifications and policy references",
+                        "items": {
+                            "$ref": "#/components/schemas/AccountingTreatment"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "capabilities": {
+                        "description": "Capabilities toggle optional behaviours and overrides for this template.",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateCapability"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "category": {
+                        "description": "Business category for this template",
+                        "maxLength": 50,
+                        "type": "string"
+                    },
+                    "description": {
+                        "description": "Detailed description of template purpose and behavior",
+                        "maxLength": 2000,
+                        "type": "string"
+                    },
+                    "event_type": {
+                        "description": "Type of event this template processes",
+                        "maxLength": 50,
+                        "type": "string"
+                    },
+                    "examples": {
+                        "description": "Example scenarios for testing and documentation",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateExample"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "financial_statements_impact": {
+                        "description": "Net accounting impact on financial statements by account type",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateFinancialImpact"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "ledger_scope_descriptions": {
+                        "$ref": "#/components/schemas/TemplateLedgerScopeDescriptions"
+                    },
+                    "legs": {
+                        "description": "Transfer legs that generate the actual ledger transfers",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateLeg"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "metadata_schema": {
+                        "$ref": "#/components/schemas/TemplateMetadataSchema"
+                    },
+                    "name": {
+                        "description": "Human-readable name for the template",
+                        "maxLength": 200,
+                        "type": "string"
+                    },
+                    "product": {
+                        "description": "Product category for this template",
+                        "maxLength": 50,
+                        "type": "string"
+                    },
+                    "site_id": {
+                        "description": "SiteID corresponds to the JSON schema field \"site_id\".",
+                        "maximum": 2147483647,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "template_id": {
+                        "description": "TemplateID corresponds to the JSON schema field \"template_id\".",
+                        "maximum": 65535,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "trigger": {
+                        "description": "Business event that triggers this template",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "validations": {
+                        "description": "Business rule validations that must all pass for the event to be processed",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateValidation"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "variables": {
+                        "description": "Variables for calculations and business logic. Evaluated sequentially, can\nreference previous variables.",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateVariable"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "$schema",
+                    "account_code_validations",
+                    "accounting_treatments",
+                    "category",
+                    "description",
+                    "event_type",
+                    "financial_statements_impact",
+                    "legs",
+                    "metadata_schema",
+                    "name",
+                    "product",
+                    "site_id",
+                    "template_id",
+                    "trigger",
+                    "validations",
+                    "variables"
+                ],
+                "type": "object"
+            },
+            "TemplateAccountCodeValidation": {
+                "properties": {
+                    "description": {
+                        "description": "Human-readable description of the account type",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "mask": {
+                        "description": "Fixed-width digit pattern for valid account codes. Bare \"*\" matches any code.",
+                        "maxLength": 100,
+                        "type": "string"
+                    },
+                    "purpose": {
+                        "description": "Account purpose to validate",
+                        "maxLength": 50,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "description",
+                    "mask",
+                    "purpose"
+                ],
+                "type": "object"
+            },
+            "TemplateCacheRefreshResponse": {
+                "properties": {
+                    "details": {
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateDetail"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "summary": {
+                        "$ref": "#/components/schemas/TemplateCacheRefreshResponseSummary"
+                    }
+                },
+                "type": "object"
+            },
+            "TemplateCacheRefreshResponseSummary": {
+                "properties": {
+                    "cache_total_all_sites": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "cache_total_for_site": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "mode": {
+                        "type": "string"
+                    },
+                    "refreshed_count": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "site_id": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "template_ids": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "type": "object"
+            },
+            "TemplateCapability": {
+                "enum": [
+                    "allows_fx_transfers",
+                    "allows_intercompany_transfers",
+                    "skip_account_type_validation",
+                    "skip_financial_statements_impact_validation"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TemplateCapabilityAllowsFXTransfers",
+                    "TemplateCapabilityAllowsIntercompanyTransfers",
+                    "TemplateCapabilitySkipAccountTypeValidation",
+                    "TemplateCapabilitySkipFinancialStatementsImpactValidation"
+                ]
+            },
+            "TemplateDetail": {
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "site_id": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/TemplateDetailStatus"
+                    },
+                    "template_id": {
+                        "maximum": 65535,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "message",
+                    "site_id",
+                    "status",
+                    "template_id"
+                ],
+                "type": "object"
+            },
+            "TemplateDetailStatus": {
+                "enum": [
+                    "loaded",
+                    "error",
+                    "skipped"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TemplateDetailStatusLoaded",
+                    "TemplateDetailStatusError",
+                    "TemplateDetailStatusSkipped"
+                ]
+            },
+            "TemplateExample": {
+                "properties": {
+                    "description": {
+                        "description": "Human-readable description of the example scenario",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "event_request": {
+                        "$ref": "#/components/schemas/Event"
+                    },
+                    "expected_transfers": {
+                        "description": "Expected transfers that should be generated for validation",
+                        "items": {
+                            "$ref": "#/components/schemas/ExpectedTransfer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "name": {
+                        "description": "Name of the example scenario",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "event_request",
+                    "expected_transfers",
+                    "name"
+                ],
+                "type": "object"
+            },
+            "TemplateFinancialImpact": {
+                "properties": {
+                    "account_type": {
+                        "$ref": "#/components/schemas/AccountType"
+                    },
+                    "description": {
+                        "description": "Human-readable description explaining the business context of this impact",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "impact": {
+                        "$ref": "#/components/schemas/FinancialImpact"
+                    },
+                    "ledger_scope": {
+                        "description": "Ledger scope identifier. Must be lower_snake_case and match an entry in ledger_scope_descriptions.\n@pattern ^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "account_type",
+                    "description",
+                    "impact",
+                    "ledger_scope"
+                ],
+                "type": "object"
+            },
+            "TemplateInfo": {
+                "properties": {
+                    "id": {
+                        "maximum": 65535,
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "type": "object"
+            },
+            "TemplateLedgerScopeDescriptions": {
+                "additionalProperties": {
+                    "type": "string"
+                },
+                "description": "Human-readable descriptions for each ledger scope used by this template",
+                "type": "object"
+            },
+            "TemplateLeg": {
+                "properties": {
+                    "amount": {
+                        "description": "Reference for the transfer amount (variable or direct selector)",
+                        "type": "string"
+                    },
+                    "condition": {
+                        "description": "Optional reference to a boolean controlling conditional execution",
+                        "type": "string"
+                    },
+                    "credit_account": {
+                        "description": "Reference for the credit account (variable or direct selector)",
+                        "type": "string"
+                    },
+                    "credit_account_type": {
+                        "$ref": "#/components/schemas/AccountType"
+                    },
+                    "debit_account": {
+                        "description": "Reference for the debit account (variable or direct selector)",
+                        "type": "string"
+                    },
+                    "debit_account_type": {
+                        "$ref": "#/components/schemas/AccountType"
+                    },
+                    "description": {
+                        "description": "Human-readable description of this leg's purpose",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "ledger_scope": {
+                        "description": "Ledger scope identifier. Must be lower_snake_case and match an entry in ledger_scope_descriptions.\n@pattern ^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
+                        "type": "string"
+                    },
+                    "leg_number": {
+                        "description": "Sequential identifier for the leg",
+                        "maximum": 1000,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "treatment_type": {
+                        "$ref": "#/components/schemas/TreatmentType"
+                    }
+                },
+                "required": [
+                    "amount",
+                    "credit_account",
+                    "credit_account_type",
+                    "debit_account",
+                    "debit_account_type",
+                    "description",
+                    "ledger_scope",
+                    "leg_number",
+                    "treatment_type"
+                ],
+                "type": "object"
+            },
+            "TemplateMetadata": {
+                "description": "Template metadata for debugging purposes",
+                "properties": {
+                    "example_count": {
+                        "description": "Number of examples provided",
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "leg_count": {
+                        "description": "Number of legs in the template",
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "name": {
+                        "description": "Template name",
+                        "type": "string"
+                    },
+                    "template_id": {
+                        "description": "Template ID",
+                        "maximum": 65535,
+                        "type": "integer"
+                    },
+                    "validation_count": {
+                        "description": "Number of validation rules",
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "variable_count": {
+                        "description": "Number of variables defined",
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "example_count",
+                    "leg_count",
+                    "name",
+                    "template_id",
+                    "validation_count",
+                    "variable_count"
+                ],
+                "type": "object"
+            },
+            "TemplateMetadataSchema": {
+                "description": "JSON Schema for validating event's extra_metadata field",
+                "properties": {
+                    "$schema": {
+                        "description": "Schema corresponds to the JSON schema field \"$schema\".",
+                        "type": "string"
+                    },
+                    "additionalProperties": {
+                        "description": "AdditionalProperties corresponds to the JSON schema field\n\"additionalProperties\".",
+                        "type": "boolean"
+                    },
+                    "properties": {
+                        "additionalProperties": {},
+                        "description": "Properties corresponds to the JSON schema field \"properties\".",
+                        "type": "object"
+                    },
+                    "required": {
+                        "description": "Required corresponds to the JSON schema field \"required\".",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "type": {
+                        "description": "Type corresponds to the JSON schema field \"type\".",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "properties",
+                    "type"
+                ],
+                "type": "object"
+            },
+            "TemplateResponse": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/TemplateStatus"
+                    },
+                    "template": {
+                        "$ref": "#/components/schemas/Template"
+                    }
+                },
+                "required": [
+                    "status",
+                    "template"
+                ],
+                "type": "object"
+            },
+            "TemplateSiteStatusResponse": {
+                "properties": {
+                    "failed_templates": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object"
+                    },
+                    "failed_templates_n": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "last_reload_time": {
+                        "type": "string"
+                    },
+                    "site_id": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "templates_loaded": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "TemplateStatus": {
+                "properties": {
+                    "checker": {
+                        "type": "string"
+                    },
+                    "content_hash": {
+                        "type": "string"
+                    },
+                    "effective_date": {
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "is_executable": {
+                        "type": "boolean"
+                    },
+                    "maker": {
+                        "type": "string"
+                    },
+                    "revision": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "slug_id": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/AuditState"
+                    },
+                    "transition_date": {
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "TemplateValidation": {
+                "properties": {
+                    "description": {
+                        "description": "Human-readable description of what this validation ensures",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "expression": {
+                        "description": "CEL expression that must evaluate to true",
+                        "maxLength": 1000,
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Validation rule name",
+                        "maxLength": 100,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "description",
+                    "expression",
+                    "name"
+                ],
+                "type": "object"
+            },
+            "TemplateValidationsPostRequest": {
+                "properties": {
+                    "event_request": {
+                        "$ref": "#/components/schemas/Event"
+                    },
+                    "expected_transfers": {
+                        "description": "Optional expected transfers for comparison (uses sparse ExpectedTransfer format)",
+                        "items": {
+                            "$ref": "#/components/schemas/ExpectedTransfer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "template": {
+                        "$ref": "#/components/schemas/Template"
+                    }
+                },
+                "required": [
+                    "template"
+                ],
+                "type": "object"
+            },
+            "TemplateValidationsPostResponse": {
+                "properties": {
+                    "auto_generated": {
+                        "description": "True if expected_transfers were auto-generated from the event_request",
+                        "type": "boolean"
+                    },
+                    "comparison_errors": {
+                        "description": "Differences between expected and actual transfers",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "generated_expected_transfers": {
+                        "description": "Generated transfers in sparse expected-transfer format if event_request was provided",
+                        "items": {
+                            "$ref": "#/components/schemas/ExpectedTransfer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/TemplateValidationsPostResponseStatus"
+                    },
+                    "template_metadata": {
+                        "$ref": "#/components/schemas/TemplateMetadata"
+                    },
+                    "validation_details": {
+                        "description": "Structured validation error details with enhanced information",
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationErrorDetail"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "validation_errors": {
+                        "description": "List of validation errors if any, provided in simple string form",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "status",
+                    "validation_errors"
+                ],
+                "type": "object"
+            },
+            "TemplateValidationsPostResponseStatus": {
+                "description": "Overall validation status",
+                "enum": [
+                    "INVALID",
+                    "VALID"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TemplateValidationsPostResponseStatusINVALID",
+                    "TemplateValidationsPostResponseStatusVALID"
+                ]
+            },
+            "TemplateVariable": {
+                "properties": {
+                    "description": {
+                        "description": "Human-readable description of what this variable represents",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Variable name used in legs and other expressions",
+                        "maxLength": 100,
+                        "type": "string"
+                    },
+                    "value": {
+                        "description": "CEL expression to calculate the variable value",
+                        "maxLength": 1000,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "description",
+                    "name",
+                    "value"
+                ],
+                "type": "object"
+            },
+            "TemplateWithStatus": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/TemplateStatus"
+                    },
+                    "template": {
+                        "$ref": "#/components/schemas/Template"
+                    }
+                },
+                "required": [
+                    "status",
+                    "template"
+                ],
+                "type": "object"
+            },
+            "TemplatesListResponse": {
+                "properties": {
+                    "count": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "templates": {
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateWithStatus"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "count",
+                    "templates"
+                ],
+                "type": "object"
+            },
+            "Transfer": {
+                "properties": {
+                    "amount": {
+                        "example": 100000,
+                        "maximum": 9007199254740992,
+                        "type": "integer"
+                    },
+                    "credit_account_id": {
+                        "example": "0192b4f0-7abc-7def-8000-000000000002",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "debit_account_id": {
+                        "description": "Core transfer fields",
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "event_id": {
+                        "description": "Domain-specific metadata (mapped to TigerBeetle's UserData fields)",
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "flags": {
+                        "example": 0,
+                        "maximum": 65535,
+                        "type": "integer"
+                    },
+                    "id": {
+                        "description": "Transfer ID (populated on reads from TigerBeetle, zero value on writes)",
+                        "example": "0192b4f0-7abc-7def-8000-000000000010",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "is_rollup": {
+                        "example": false,
+                        "type": "boolean"
+                    },
+                    "ledger_id": {
+                        "example": 1,
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "leg_index": {
+                        "example": 1,
+                        "maximum": 63,
+                        "type": "integer"
+                    },
+                    "occurred_at": {
+                        "example": 1760000000000,
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "template_id": {
+                        "example": 532,
+                        "maximum": 65535,
+                        "type": "integer"
+                    },
+                    "timestamp": {
+                        "description": "Unix timestamp in milliseconds (UTC)",
+                        "example": 1760000000123,
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "amount",
+                    "credit_account_id",
+                    "debit_account_id",
+                    "event_id",
+                    "flags",
+                    "id",
+                    "is_rollup",
+                    "ledger_id",
+                    "leg_index",
+                    "occurred_at",
+                    "template_id",
+                    "timestamp"
+                ],
+                "type": "object"
+            },
+            "TransferResponse": {
+                "properties": {
+                    "transfer": {
+                        "$ref": "#/components/schemas/Transfer"
+                    }
+                },
+                "required": [
+                    "transfer"
+                ],
+                "type": "object"
+            },
+            "TransfersCountResponse": {
+                "properties": {
+                    "count": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "is_capped": {
+                        "type": "boolean"
+                    },
+                    "timestamp_max": {
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "count",
+                    "is_capped"
+                ],
+                "type": "object"
+            },
+            "TransfersListResponse": {
+                "properties": {
+                    "count": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "has_more": {
+                        "type": "boolean"
+                    },
+                    "next_cursor": {
+                        "type": "string"
+                    },
+                    "timestamp_max": {
+                        "maximum": 4102444800000,
+                        "type": "integer"
+                    },
+                    "transfers": {
+                        "items": {
+                            "$ref": "#/components/schemas/Transfer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "count",
+                    "has_more",
+                    "transfers"
+                ],
+                "type": "object"
+            },
+            "TreatmentType": {
+                "description": "Accounting treatment type for this leg - must match one of the template's accounting_treatments",
+                "enum": [
+                    "cash_movement",
+                    "settlement_clearing",
+                    "refund_reversal",
+                    "fee_revenue",
+                    "fee_cost",
+                    "fee_accrual",
+                    "payable_recognition",
+                    "receivable_recognition",
+                    "accrual_interest_income",
+                    "accrual_interest_expense",
+                    "impairment_provision",
+                    "impairment_release",
+                    "write_off",
+                    "recovery_post_writeoff",
+                    "accrual_non_interest",
+                    "amortisation_non_interest",
+                    "interest_capitalisation",
+                    "loan_principal_disbursement",
+                    "loan_principal_repayment",
+                    "customer_deposit_receipt",
+                    "customer_withdrawal",
+                    "internal_transfer",
+                    "opening_balance_adjustment",
+                    "system_correction",
+                    "adjustment_manual",
+                    "period_close_allocation",
+                    "revaluation_fx",
+                    "realized_fx",
+                    "revaluation_fair_value",
+                    "realized_fair_value",
+                    "hedge_cash_flow_reserve",
+                    "hedge_fair_value_adjustment",
+                    "day_one_pnl",
+                    "capital_injection",
+                    "capital_redemption",
+                    "dividend_distribution",
+                    "tax_revenue",
+                    "tax_expense",
+                    "withholding_tax",
+                    "chargeback",
+                    "representment",
+                    "fee_rebate",
+                    "commission_revenue",
+                    "commission_cost",
+                    "coupon_income",
+                    "coupon_expense",
+                    "dividend_income",
+                    "repo_interest_expense",
+                    "reverse_repo_interest_income",
+                    "stock_borrow_fee",
+                    "stock_lend_rebate",
+                    "corporate_action_adjustment",
+                    "fail_to_deliver_penalty",
+                    "fail_to_receive_penalty",
+                    "derivative_initial_margin",
+                    "derivative_variation_margin",
+                    "collateral_pledge",
+                    "collateral_receive",
+                    "collateral_interest",
+                    "cva_adjustment",
+                    "dva_adjustment",
+                    "fva_adjustment",
+                    "crypto_network_fee",
+                    "crypto_staking_reward_income",
+                    "crypto_staking_slash_expense",
+                    "crypto_custody_fee_cost",
+                    "crypto_airdrop_income",
+                    "crypto_burn_adjustment",
+                    "crypto_chain_reorg_adjustment",
+                    "investment_principal_purchase",
+                    "investment_principal_sale"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TreatmentTypeCashMovement",
+                    "TreatmentTypeSettlementClearing",
+                    "TreatmentTypeRefundReversal",
+                    "TreatmentTypeFeeRevenue",
+                    "TreatmentTypeFeeCost",
+                    "TreatmentTypeFeeAccrual",
+                    "TreatmentTypePayableRecognition",
+                    "TreatmentTypeReceivableRecognition",
+                    "TreatmentTypeAccrualInterestIncome",
+                    "TreatmentTypeAccrualInterestExpense",
+                    "TreatmentTypeImpairmentProvision",
+                    "TreatmentTypeImpairmentRelease",
+                    "TreatmentTypeWriteOff",
+                    "TreatmentTypeRecoveryPostWriteOff",
+                    "TreatmentTypeAccrualNonInterest",
+                    "TreatmentTypeAmortisationNonInterest",
+                    "TreatmentTypeInterestCapitalisation",
+                    "TreatmentTypeLoanPrincipalDisbursement",
+                    "TreatmentTypeLoanPrincipalRepayment",
+                    "TreatmentTypeCustomerDepositReceipt",
+                    "TreatmentTypeCustomerWithdrawal",
+                    "TreatmentTypeInternalTransfer",
+                    "TreatmentTypeOpeningBalanceAdjustment",
+                    "TreatmentTypeSystemCorrection",
+                    "TreatmentTypeAdjustmentManual",
+                    "TreatmentTypePeriodCloseAllocation",
+                    "TreatmentTypeRevaluationFX",
+                    "TreatmentTypeRealizedFX",
+                    "TreatmentTypeRevaluationFairValue",
+                    "TreatmentTypeRealizedFairValue",
+                    "TreatmentTypeHedgeCashFlowReserve",
+                    "TreatmentTypeHedgeFairValueAdjustment",
+                    "TreatmentTypeDayOnePNL",
+                    "TreatmentTypeCapitalInjection",
+                    "TreatmentTypeCapitalRedemption",
+                    "TreatmentTypeDividendDistribution",
+                    "TreatmentTypeTaxRevenue",
+                    "TreatmentTypeTaxExpense",
+                    "TreatmentTypeWithholdingTax",
+                    "TreatmentTypeChargeback",
+                    "TreatmentTypeRepresentment",
+                    "TreatmentTypeFeeRebate",
+                    "TreatmentTypeCommissionRevenue",
+                    "TreatmentTypeCommissionCost",
+                    "TreatmentTypeCouponIncome",
+                    "TreatmentTypeCouponExpense",
+                    "TreatmentTypeDividendIncome",
+                    "TreatmentTypeRepoInterestExpense",
+                    "TreatmentTypeReverseRepoInterestIncome",
+                    "TreatmentTypeStockBorrowFee",
+                    "TreatmentTypeStockLendRebate",
+                    "TreatmentTypeCorporateActionAdjustment",
+                    "TreatmentTypeFailToDeliverPenalty",
+                    "TreatmentTypeFailToReceivePenalty",
+                    "TreatmentTypeDerivativeInitialMargin",
+                    "TreatmentTypeDerivativeVariationMargin",
+                    "TreatmentTypeCollateralPledge",
+                    "TreatmentTypeCollateralReceive",
+                    "TreatmentTypeCollateralInterest",
+                    "TreatmentTypeCVAAdjustment",
+                    "TreatmentTypeDVAAdjustment",
+                    "TreatmentTypeFVAAdjustment",
+                    "TreatmentTypeCryptoNetworkFee",
+                    "TreatmentTypeCryptoStakingRewardIncome",
+                    "TreatmentTypeCryptoStakingSlashExpense",
+                    "TreatmentTypeCryptoCustodyFeeCost",
+                    "TreatmentTypeCryptoAirdropIncome",
+                    "TreatmentTypeCryptoBurnAdjustment",
+                    "TreatmentTypeCryptoChainReorgAdjustment",
+                    "TreatmentTypeInvestmentPrincipalPurchase",
+                    "TreatmentTypeInvestmentPrincipalSale"
+                ]
+            },
+            "ValidationErrorCategory": {
+                "description": "Error category for classification",
+                "enum": [
+                    "JSON_STRUCTURE",
+                    "CEL_EXPRESSION",
+                    "BUSINESS_LOGIC",
+                    "REFERENCE",
+                    "TYPE",
+                    "RANGE",
+                    "LINT"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "ValidationErrorCategoryJSONSTRUCTURE",
+                    "ValidationErrorCategoryCELEXPRESSION",
+                    "ValidationErrorCategoryBUSINESSLOGIC",
+                    "ValidationErrorCategoryREFERENCE",
+                    "ValidationErrorCategoryTYPE",
+                    "ValidationErrorCategoryRANGE",
+                    "ValidationErrorCategoryLINT"
+                ]
+            },
+            "ValidationErrorDetail": {
+                "properties": {
+                    "category": {
+                        "$ref": "#/components/schemas/ValidationErrorCategory"
+                    },
+                    "details": {
+                        "description": "Technical details for debugging (optional)",
+                        "type": "string"
+                    },
+                    "field_path": {
+                        "description": "Field path where the error occurred (e.g., \"variables[0].expression\", \"legs[2].amount\")",
+                        "type": "string"
+                    },
+                    "invalid_value": {
+                        "description": "The problematic value that caused the error (if applicable)",
+                        "type": "string"
+                    },
+                    "location": {
+                        "$ref": "#/components/schemas/ValidationErrorLocation"
+                    },
+                    "message": {
+                        "description": "Human-readable error message",
+                        "type": "string"
+                    },
+                    "suggestion": {
+                        "description": "Suggested fix or action to resolve the error",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "category",
+                    "message"
+                ],
+                "type": "object"
+            },
+            "ValidationErrorLocation": {
+                "description": "Line/column information for CEL expressions (if applicable)",
+                "properties": {
+                    "column": {
+                        "description": "Column number (1-based)",
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "line": {
+                        "description": "Line number (1-based)",
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "position": {
+                        "description": "Character position in the expression (0-based)",
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "eventsByOriginalResponse": {
+                "properties": {
+                    "count": {
+                        "maximum": 2147483647,
+                        "type": "integer"
+                    },
+                    "events": {
+                        "items": {
+                            "$ref": "#/components/schemas/Event"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "has_more": {
+                        "type": "boolean"
+                    },
+                    "next_cursor": {
+                        "type": "string"
+                    },
+                    "original_event_id": {
+                        "format": "uuid",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "count",
+                    "events",
+                    "has_more",
+                    "original_event_id"
+                ],
+                "type": "object"
+            },
+            "templateCacheRefreshRequestBody": {
+                "description": "Request body for template cache refresh operations.",
+                "properties": {
+                    "template_ids": {
+                        "items": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "info": {
+        "description": "# Event Service API\n\n## Start here\n\nThe Event Service processes financial events into accounting transfers using configurable templates and CEL expressions.\n\nThis OpenAPI document is generated from Go source annotations and is served by the running service at `GET /openapi.json`.\n\n## Quickstart\n\n1. Run the service locally:\n\n   - `just run`\n\n2. Open the API docs portal:\n\n   - `GET /docs`\n\n3. Sanity check liveness/readiness:\n\n   - `curl -s http://localhost:8080/livez | jq .`\n   - `curl -s http://localhost:8080/readyz | jq .`\n\n4. Submit an event:\n\n   - `POST /events` with a `domain.Event` payload.\n\n### Example: `POST /events`\n\nRequest (schema-valid example):\n\n```bash\ncurl -sS -X POST http://localhost:8080/events \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"$schema\": \"https://ledger-rocket.github.io/schemas/domain/event.schema.json\",\n    \"event_id\": \"0192b4f0-7abc-7def-8000-000000000001\",\n    \"site_id\": 1,\n    \"occurred_at\": 1760000000000,\n    \"template_ids\": [532],\n    \"amount\": 100000,\n    \"event_source\": \"docs_example\",\n    \"accounts\": [\n      {\"account_id\": \"0192b4f0-7abc-7def-8000-000000000001\", \"purpose\": \"from_account\"},\n      {\"account_id\": \"0192b4f0-7abc-7def-8000-000000000002\", \"purpose\": \"nostro_account\"}\n    ],\n    \"directives\": [\"skip_rollup_processing\"]\n  }'\n```\n\nResponse (example):\n\n```json\n{\n  \"status\": \"COMMITTED\",\n  \"event_id\": \"0192b4f0-7abc-7def-8000-000000000001\",\n  \"processed_at\": 1760000000123\n}\n```\n\n### Example: `GET /events/{event_id}/transfers`\n\nRequest:\n\n```bash\ncurl -sS 'http://localhost:8080/events/0192b4f0-7abc-7def-8000-000000000001/transfers?limit=200' | jq .\n```\n\nResponse (example):\n\n```json\n{\n  \"transfers\": [\n    {\n      \"id\": \"0192b4f0-7abc-7def-8000-000000000010\",\n      \"debit_account_id\": \"0192b4f0-7abc-7def-8000-000000000001\",\n      \"credit_account_id\": \"0192b4f0-7abc-7def-8000-000000000002\",\n      \"amount\": 100000,\n      \"template_id\": 532,\n      \"ledger_id\": 1,\n      \"event_id\": \"0192b4f0-7abc-7def-8000-000000000001\",\n      \"occurred_at\": 1760000000000,\n      \"leg_index\": 1,\n      \"is_rollup\": false,\n      \"timestamp\": 1760000000123,\n      \"flags\": 0\n    }\n  ],\n  \"count\": 1,\n  \"has_more\": false\n}\n```\n\n## Core concepts (from the implemented API + functional specification)\n\n### Event IDs and idempotency\n\n- `event_id` is a UUIDv7 and is used as the idempotency key for `POST /events`.\n- Submitting the same `event_id` more than once returns `409 DUPLICATE_EVENT`.\n\n### Acknowledgements and the outbox\n\n- `POST /events` returns `api.EventsPostResponse`.\n- `status` is always `COMMITTED` for `POST /events`.\n- `COMMITTED` means TigerBeetle succeeded and a durable outbox record exists, so the event is recoverable even if downstream publication is still pending.\n- Publication to the downstream Event Store is asynchronous; clients should use transfer lookups as the durable source of truth.\n\n### Validation endpoints\n\n- `POST /events:validate` runs the validation pipeline without committing transfers.\n- `POST /events:validate:explain` returns the same response shape and additionally includes a deterministic execution trace (`trace`).\n- `POST /templates:validate` validates a template and can optionally compare generated vs expected transfers.\n\n### Transfer lookups and enrichment\n\n- Transfer lookup endpoints read from the configured Transfer Ledger (TigerBeetle when enabled).\n- \u201cEnriched\u201d transfer variants require `site_id` to resolve account context.\n\n## API surface (inventory)\n\n### Events\n\n- `POST /events` \u2014 process an event and return an acknowledgement\n- `GET /events/{event_id}` \u2014 fetch the original event payload (when supported by the configured Event Store)\n- `GET /events/{event_id}/outbox` \u2014 fetch outbox state/timestamps for the event\n- `GET /events?original_event_id={original_event_id}` \u2014 list events sharing `original_event_id` (when supported by the configured Event Store)\n\n### Validation\n\n- `POST /events:validate` \u2014 dry-run event validation\n- `POST /events:validate:explain` \u2014 dry-run event validation with trace\n- `POST /templates:validate` \u2014 validate a template (optionally with event + expected transfers)\n\n### Transfers\n\n- `GET /transfers/{id}` \u2014 fetch a transfer by ID\n- `GET /transfers/{id}/enriched` \u2014 fetch an enriched transfer by ID (requires `site_id`)\n- `GET /events/{event_id}/transfers` \u2014 list transfers for an event\n- `GET /events/{event_id}/transfers/enriched` \u2014 list enriched transfers for an event (requires `site_id`)\n- `GET /accounts/{account_id}/transfers` \u2014 list transfers for an account\n- `GET /accounts/{account_id}/transfers/enriched` \u2014 not implemented (documented as `501 NOT_IMPLEMENTED`)\n\n### Templates\n\n- `GET /sites/{site_id}/templates` \u2014 list templates for a site\n- `GET /sites/{site_id}/templates/{template_id}` \u2014 fetch a single template\n- `PUT /sites/{site_id}/templates/{template_id}` \u2014 create/update template draft content\n- `POST /sites/{site_id}/templates/{template_id}/submit` \u2014 submit template for review\n- `POST /sites/{site_id}/templates/{template_id}/approve` \u2014 approve template\n- `POST /sites/{site_id}/templates/{template_id}/reject` \u2014 reject template\n- `POST /sites/{site_id}/templates/{template_id}/withdraw` \u2014 withdraw template (undo submit)\n- `POST /sites/{site_id}/templates/{template_id}/deprecate` \u2014 deprecate template\n- `POST /sites/{site_id}/templates/{template_id}/delete` \u2014 delete draft template\n- `POST /sites/{site_id}/templates/{template_id}/undelete` \u2014 restore deleted draft\n- `GET /sites/{site_id}/templates/{template_id}/audit-slugs` \u2014 list template audit slugs\n- `GET /sites/{site_id}/templates:status` \u2014 template loader status for a site\n- `POST /sites/{site_id}/templates:refresh-cache` \u2014 refresh template cache for a site\n\n### Health\n\n- `GET /` \u2014 service information\n- `GET /livez` \u2014 liveness\n- `GET /readyz` \u2014 readiness\n\n## Schemas\n\nPrimary request/response schemas (non-exhaustive):\n\n- `domain.Event` \u2014 request body for `POST /events`, `POST /events:validate`, `POST /events:validate:explain`\n- `api.EventsPostResponse` \u2014 acknowledgement returned by `POST /events`\n- `api.EventValidationsPostResponse` \u2014 response returned by event validation endpoints\n- `api.TemplateValidationsPostRequest` / `api.TemplateValidationsPostResponse` \u2014 request/response for template validation\n- `api.TransfersListResponse` / `api.EnrichedTransfersListResponse` \u2014 list responses for transfer lookups\n- `ProblemDetails` \u2014 RFC 9457 Problem Details (standard error response for all 4xx/5xx)\n\n## Error handling\n\nAll 4xx/5xx responses use RFC 9457 Problem Details:\n\n- Media type: `application/problem+json; charset=utf-8`\n- Body fields (and only these): `type`, `title`, `status`, `detail`, `instance`, optional `errors`\n- `type` is a service-scoped problem type URI under `https://ledger-rocket.dev/event-service/problems/...`\n- `detail` is explicit and actionable when possible (e.g., missing `account_id` values with `site_id`, or required capabilities for cross-ledger validation).\n\n## Auth\n\nAuthentication is optional and controlled by configuration:\n\n- When `auth.require_oauth: true`, the service enforces OAuth/JWT validation and scopes (see `docs/auth-config.md`).\n- The OpenAPI document does not yet declare `securitySchemes`.\n\n## Versioning and compatibility\n\nThis is not specified in the provided material:\n\n- The HTTP paths are not versioned (no `/v1/...` prefix).\n- A compatibility/deprecation policy is not defined.\n\n## TODOs / gaps to close\n\n1. Define and document the authentication model (and declare it in OpenAPI `securitySchemes`).\n2. Define and document the public base URL(s) and any environment-specific routing (reverse proxy / root path expectations).\n3. Define a versioning strategy and deprecation/changelog policy for the HTTP API.\n\n## Launch-ready checklist\n\n1. Ensure every operation has a precise description, complete parameters, and explicit error responses in OpenAPI.\n2. Add 1\u20132 schema-valid request/response examples for each non-debug endpoint.\n3. Add tag descriptions and groupings suitable for a public portal (ReDoc/Scalar).\n4. Declare auth + required headers (API key / OAuth / mTLS) once the platform decision is final.\n",
+        "title": "Event Service API",
+        "version": "6.55.0",
+        "x-tagGroups": [
+            {
+                "name": "Core",
+                "tags": [
+                    "Events",
+                    "Validation",
+                    "Transfers",
+                    "Templates"
+                ]
+            },
+            {
+                "name": "Operations",
+                "tags": [
+                    "Admin",
+                    "Health",
+                    "Debug"
+                ]
+            }
+        ]
+    },
+    "openapi": "3.1.0",
+    "paths": {
+        "/": {
+            "get": {
+                "description": "Returns basic service information including service name, version, and health endpoints.",
+                "operationId": "getServiceInfo",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceInfoResponse"
+                                }
+                            }
+                        },
+                        "description": "Service info"
+                    }
+                },
+                "summary": "Service information",
+                "tags": [
+                    "Health"
+                ]
+            }
+        },
+        "/api/v1/accounts/{account_id}/transfers": {
+            "get": {
+                "description": "Retrieves all transfers where the specified account is either the debit or credit account.",
+                "operationId": "getTransfersByAccountId",
+                "parameters": [
+                    {
+                        "description": "Account ID (UUID)",
+                        "in": "path",
+                        "name": "account_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Filter by transfer side: 'debit' or 'credit'. Omit for both sides.",
+                        "in": "query",
+                        "name": "side",
+                        "schema": {
+                            "enum": [
+                                "debit",
+                                "credit"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Maximum number of transfers to return (server default: 200)",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "maximum": 8190,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Upper bound (inclusive) for transfer timestamp in Unix milliseconds",
+                        "in": "query",
+                        "name": "timestamp_max",
+                        "schema": {
+                            "maximum": 4102444800000,
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Opaque pagination cursor from previous response",
+                        "in": "query",
+                        "name": "cursor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Filter by template ID",
+                        "in": "query",
+                        "name": "template_id",
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TransfersListResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid account ID"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Get transfers by account ID",
+                "tags": [
+                    "Transfers"
+                ]
+            }
+        },
+        "/api/v1/accounts/{account_id}/transfers:count": {
+            "get": {
+                "description": "Counts transfers where the specified account is either the debit or credit account using a single capped TigerBeetle query.",
+                "operationId": "countTransfersByAccountId",
+                "parameters": [
+                    {
+                        "description": "Account ID (UUID)",
+                        "in": "path",
+                        "name": "account_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Filter by transfer side: 'debit' or 'credit'. Omit for both sides.",
+                        "in": "query",
+                        "name": "side",
+                        "schema": {
+                            "enum": [
+                                "debit",
+                                "credit"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Upper bound (inclusive) for transfer timestamp in Unix milliseconds",
+                        "in": "query",
+                        "name": "timestamp_max",
+                        "schema": {
+                            "maximum": 4102444800000,
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Filter by template ID",
+                        "in": "query",
+                        "name": "template_id",
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TransfersCountResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid account ID or request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Count transfers by account ID",
+                "tags": [
+                    "Transfers"
+                ]
+            }
+        },
+        "/api/v1/admin/outbox": {
+            "get": {
+                "description": "Returns outbox record metadata, optionally filtered by state.",
+                "operationId": "listOutboxRecords",
+                "parameters": [
+                    {
+                        "description": "Filter by state (PREPARED, COMMITTED, PUBLISHED, FAILED)",
+                        "in": "query",
+                        "name": "state",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Max records to return (server default: 100)",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "maximum": 1000,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminOutboxListResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "List outbox records",
+                "tags": [
+                    "Admin"
+                ]
+            }
+        },
+        "/api/v1/admin/outbox/stats": {
+            "get": {
+                "description": "Returns aggregate outbox stats including counts, ages, and retry info.",
+                "operationId": "getOutboxStats",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminOutboxStatsResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Get outbox statistics",
+                "tags": [
+                    "Admin"
+                ]
+            }
+        },
+        "/api/v1/events": {
+            "get": {
+                "description": "Returns events that share the same original_event_id with cursor-based pagination. Ordered by linked_at ASC, event_id ASC.",
+                "operationId": "getEvents",
+                "parameters": [
+                    {
+                        "description": "Original event ID (UUIDv7)",
+                        "in": "query",
+                        "name": "original_event_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Maximum number of events to return (server default: 200)",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "maximum": 8190,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Opaque pagination cursor from previous response",
+                        "in": "query",
+                        "name": "cursor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/eventsByOriginalResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid original_event_id"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    },
+                    "501": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Event retrieval not supported"
+                    }
+                },
+                "summary": "List events (filter by original_event_id)",
+                "tags": [
+                    "Events"
+                ]
+            },
+            "post": {
+                "description": "Processes an event through the pipeline, durably prepares the outbox, commits transfers to the configured Transfer Ledger, and returns a COMMITTED acknowledgement once the event is durably recoverable.",
+                "operationId": "processEvent",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Event",
+                                "description": "Event to process",
+                                "summary": "event"
+                            }
+                        }
+                    },
+                    "description": "Event to process",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventsPostResponse"
+                                }
+                            }
+                        },
+                        "description": "Event processed successfully"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Malformed JSON"
+                    },
+                    "409": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Duplicate event"
+                    },
+                    "422": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Validation error"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    },
+                    "503": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Service unavailable"
+                    }
+                },
+                "summary": "Process an event",
+                "tags": [
+                    "Events"
+                ]
+            }
+        },
+        "/api/v1/events/{event_id}": {
+            "get": {
+                "description": "Returns the original event payload exactly as submitted when retrieval is supported by the configured Event Store.",
+                "operationId": "getEvent",
+                "parameters": [
+                    {
+                        "description": "Event ID (UUIDv7)",
+                        "in": "path",
+                        "name": "event_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Event"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid event ID"
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Event not found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    },
+                    "501": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Event retrieval not yet supported"
+                    }
+                },
+                "summary": "Get a previously submitted event",
+                "tags": [
+                    "Events"
+                ]
+            }
+        },
+        "/api/v1/events/{event_id}/outbox": {
+            "get": {
+                "description": "Returns the current outbox record if the configured outbox still retains it.",
+                "operationId": "getEventOutbox",
+                "parameters": [
+                    {
+                        "description": "Event ID (UUIDv7)",
+                        "in": "path",
+                        "name": "event_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventOutboxResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid event ID"
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Event not found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Get event outbox record",
+                "tags": [
+                    "Events"
+                ]
+            }
+        },
+        "/api/v1/events/{event_id}/transfers": {
+            "get": {
+                "description": "Retrieves transfers associated with an event by querying the Transfer Ledger for transfers whose `user_data_128` matches the event ID.",
+                "operationId": "getTransfersByEventId",
+                "parameters": [
+                    {
+                        "description": "Event ID (UUIDv7)",
+                        "in": "path",
+                        "name": "event_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Maximum number of transfers to return (server default: 200)",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "maximum": 8190,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Upper bound (inclusive) for transfer timestamp in Unix milliseconds",
+                        "in": "query",
+                        "name": "timestamp_max",
+                        "schema": {
+                            "maximum": 4102444800000,
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Opaque pagination cursor from previous response",
+                        "in": "query",
+                        "name": "cursor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TransfersListResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid event ID"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Get transfers by event ID",
+                "tags": [
+                    "Transfers"
+                ]
+            }
+        },
+        "/api/v1/events/{event_id}/transfers/enriched": {
+            "get": {
+                "description": "Retrieves all transfers for an event with account metadata. Requires site_id to resolve account context.",
+                "operationId": "getEnrichedTransfersByEventId",
+                "parameters": [
+                    {
+                        "description": "Event ID (UUIDv7)",
+                        "in": "path",
+                        "name": "event_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Site ID providing account context",
+                        "in": "query",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 2147483647,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Maximum number of transfers to return (server default: 200)",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "maximum": 8190,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Upper bound (inclusive) for transfer timestamp in Unix milliseconds",
+                        "in": "query",
+                        "name": "timestamp_max",
+                        "schema": {
+                            "maximum": 4102444800000,
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Opaque pagination cursor from previous response",
+                        "in": "query",
+                        "name": "cursor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EnrichedTransfersListResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Get enriched transfers by event ID",
+                "tags": [
+                    "Transfers"
+                ]
+            }
+        },
+        "/api/v1/events/{event_id}/transfers:count": {
+            "get": {
+                "description": "Counts transfers associated with an event using a single capped TigerBeetle query.",
+                "operationId": "countTransfersByEventId",
+                "parameters": [
+                    {
+                        "description": "Event ID (UUIDv7)",
+                        "in": "path",
+                        "name": "event_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Upper bound (inclusive) for transfer timestamp in Unix milliseconds",
+                        "in": "query",
+                        "name": "timestamp_max",
+                        "schema": {
+                            "maximum": 4102444800000,
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TransfersCountResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid event ID or request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Count transfers by event ID",
+                "tags": [
+                    "Transfers"
+                ]
+            }
+        },
+        "/api/v1/events:validate": {
+            "post": {
+                "description": "Validates an event without submitting to TigerBeetle or storing. Runs full validation pipeline including template compilation, account enrichment, and business rule checks.",
+                "operationId": "validateEvent",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Event",
+                                "description": "Event to validate",
+                                "summary": "event"
+                            }
+                        }
+                    },
+                    "description": "Event to validate",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventValidationsPostResponse"
+                                }
+                            }
+                        },
+                        "description": "Validation successful"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid request"
+                    },
+                    "422": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    },
+                    "503": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Ledger Service is unavailable"
+                    }
+                },
+                "summary": "Validate event (dry-run)",
+                "tags": [
+                    "Validation"
+                ]
+            }
+        },
+        "/api/v1/events:validate:explain": {
+            "post": {
+                "description": "Validates an event and returns detailed execution trace showing variable evaluations, validation outcomes, and leg resolution. Used for debugging and troubleshooting template logic.",
+                "operationId": "validateEventExplain",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Event",
+                                "description": "Event to validate",
+                                "summary": "event"
+                            }
+                        }
+                    },
+                    "description": "Event to validate",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventValidationsPostResponse"
+                                }
+                            }
+                        },
+                        "description": "Validation successful with trace"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid request"
+                    },
+                    "422": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    },
+                    "503": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Ledger Service is unavailable"
+                    }
+                },
+                "summary": "Validate event with execution trace (explain mode)",
+                "tags": [
+                    "Validation"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates": {
+            "get": {
+                "description": "Retrieves all templates configured for a given site",
+                "operationId": "getTemplates",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 2147483647,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TemplatesListResponse"
+                                }
+                            }
+                        },
+                        "description": "Templates found"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid site_id"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "List all templates for a site",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates/{template_id}": {
+            "get": {
+                "description": "Retrieves a specific template for a given site",
+                "operationId": "getTemplate",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 2147483647,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Template ID",
+                        "in": "path",
+                        "name": "template_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TemplateResponse"
+                                }
+                            }
+                        },
+                        "description": "Template found"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid site_id or template_id"
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Template not found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Get a single template by ID",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates:refresh-cache": {
+            "post": {
+                "description": "Reloads templates for a site from the configured store. If template_ids is omitted, reloads all templates for the site.",
+                "operationId": "refreshTemplateCache",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 2147483647,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/templateCacheRefreshRequestBody",
+                                "description": "Optional: reload only specified template IDs",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Optional: reload only specified template IDs"
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TemplateCacheRefreshResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Refresh template cache",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates:status": {
+            "get": {
+                "description": "Returns template cache status for a site.",
+                "operationId": "getTemplateSiteStatus",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 2147483647,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TemplateSiteStatusResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Template loader status (site-scoped)",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/templates:validate": {
+            "post": {
+                "description": "Validates a template's structure, CEL expressions, and business logic. Optionally runs against a provided event to generate and/or compare expected transfers.",
+                "operationId": "validateTemplate",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TemplateValidationsPostRequest",
+                                "description": "Template validation request",
+                                "summary": "request"
+                            }
+                        }
+                    },
+                    "description": "Template validation request",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TemplateValidationsPostResponse"
+                                }
+                            }
+                        },
+                        "description": "Template validation result"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Validate template",
+                "tags": [
+                    "Validation"
+                ]
+            }
+        },
+        "/api/v1/transfers": {
+            "get": {
+                "description": "Searches transfers by template ID and/or ledger ID. At least one filter must be provided.",
+                "operationId": "queryTransfers",
+                "parameters": [
+                    {
+                        "description": "Filter by template ID",
+                        "in": "query",
+                        "name": "template_id",
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Filter by ledger ID",
+                        "in": "query",
+                        "name": "ledger_id",
+                        "schema": {
+                            "maximum": 2147483647,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Maximum number of transfers to return (server default: 200)",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "maximum": 8190,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Upper bound (inclusive) for transfer timestamp in Unix milliseconds",
+                        "in": "query",
+                        "name": "timestamp_max",
+                        "schema": {
+                            "maximum": 4102444800000,
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Opaque pagination cursor from previous response",
+                        "in": "query",
+                        "name": "cursor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TransfersListResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid request or missing filters"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Query transfers by template and/or ledger",
+                "tags": [
+                    "Transfers"
+                ]
+            }
+        },
+        "/api/v1/transfers/{id}": {
+            "get": {
+                "description": "Retrieves a specific transfer by its unique ID.",
+                "operationId": "getTransfer",
+                "parameters": [
+                    {
+                        "description": "Transfer ID (UUID)",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TransferResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid transfer ID"
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Transfer not found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Get a transfer by ID",
+                "tags": [
+                    "Transfers"
+                ]
+            }
+        },
+        "/api/v1/transfers/{id}/enriched": {
+            "get": {
+                "description": "Retrieves a specific transfer with account metadata. Requires site_id to resolve account context.",
+                "operationId": "getEnrichedTransfer",
+                "parameters": [
+                    {
+                        "description": "Transfer ID (UUID)",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Site ID providing account context",
+                        "in": "query",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 2147483647,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EnrichedTransferResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid transfer ID or site_id"
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Transfer not found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Get an enriched transfer by ID",
+                "tags": [
+                    "Transfers"
+                ]
+            }
+        },
+        "/api/v1/transfers:count": {
+            "get": {
+                "description": "Counts transfers by template ID and/or ledger ID using a single capped TigerBeetle query. At least one filter must be provided.",
+                "operationId": "countQueryTransfers",
+                "parameters": [
+                    {
+                        "description": "Filter by template ID",
+                        "in": "query",
+                        "name": "template_id",
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Filter by ledger ID",
+                        "in": "query",
+                        "name": "ledger_id",
+                        "schema": {
+                            "maximum": 2147483647,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Upper bound (inclusive) for transfer timestamp in Unix milliseconds",
+                        "in": "query",
+                        "name": "timestamp_max",
+                        "schema": {
+                            "maximum": 4102444800000,
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TransfersCountResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid request or missing filters"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Count transfers by template and/or ledger",
+                "tags": [
+                    "Transfers"
+                ]
+            }
+        },
+        "/livez": {
+            "get": {
+                "description": "Simple health check that only fails if service is shutting down. Used by load balancers to determine if service should receive traffic.",
+                "operationId": "getLivez",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Response"
+                                }
+                            }
+                        },
+                        "description": "Service is alive"
+                    },
+                    "503": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Service is shutting down"
+                    }
+                },
+                "summary": "Liveness probe",
+                "tags": [
+                    "Health"
+                ]
+            }
+        },
+        "/readyz": {
+            "get": {
+                "description": "Checks all dependencies (TigerBeetle, Ledger Service, Template Store). Fails if ANY dependency is unhealthy. Used to determine if service is ready to handle requests.",
+                "operationId": "getReadyz",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Response"
+                                }
+                            }
+                        },
+                        "description": "Service is ready"
+                    },
+                    "503": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Service is not ready (dependency failure)"
+                    }
+                },
+                "summary": "Readiness probe",
+                "tags": [
+                    "Health"
+                ]
+            }
+        }
+    },
+    "servers": [
+        {
+            "url": "/v2/event-service"
+        }
+    ],
+    "tags": [
+        {
+            "description": "Event ingestion and event retrieval endpoints.",
+            "name": "Events"
+        },
+        {
+            "description": "Dry-run validation endpoints for events and templates.",
+            "name": "Validation"
+        },
+        {
+            "description": "Transfer lookup endpoints backed by the configured Transfer Ledger.",
+            "name": "Transfers"
+        },
+        {
+            "description": "Template read endpoints (compiled templates by site).",
+            "name": "Templates"
+        },
+        {
+            "description": "Administrative endpoints for template lifecycle and cache refresh.",
+            "name": "Admin"
+        },
+        {
+            "description": "Service liveness/readiness endpoints and basic service information.",
+            "name": "Health"
+        },
+        {
+            "description": "Operational endpoints for metrics and profiling.",
+            "name": "Debug"
+        }
+    ]
+}

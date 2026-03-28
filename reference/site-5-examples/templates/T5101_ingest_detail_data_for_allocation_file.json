@@ -1,0 +1,270 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5101,
+    "name": "Ingest detail data for allocation file",
+    "description": "When an allocation file is received, deposit is allocated across customers and to the file specific account for consistency checks",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Master FBO - Clearing (10101) per-file instance is debited on the economic ledger, drawing down the clearing balance established by the batch header (T5102).",
+        "impact": "increase",
+        "ledger_scope": "economic_ledger"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Customer Hold (20101) is credited, increasing the consumer deposit hold liability.",
+        "impact": "increase",
+        "ledger_scope": "economic_ledger"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Cash Balances - Clearing (11901) is debited on the allocation ledger, recording the expected FDIC fund location.",
+        "impact": "increase",
+        "ledger_scope": "allocation_ledger"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Consumer Master FBO Clearing (21101) is credited, increasing the expected consumer FDIC position.",
+        "impact": "increase",
+        "ledger_scope": "allocation_ledger"
+      }
+    ],
+    "category": "DEPOSITS",
+    "product": "DEPOSITS",
+    "event_type": "DEPOSIT",
+    "trigger": "Per-consumer line item in a bulk deposit allocation file, after the batch header (T5102) has established the per-file clearing balance.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "economic_ledger": "Economic ledger (ID 5001) where the per-file clearing balance is drawn down and consumer available balances are credited.",
+      "allocation_ledger": "Allocation ledger (ID 5002) where Cash Balances and consumer FBO Main positions are updated for FDIC tracking."
+    },
+    "accounting_treatments": [
+      {
+        "type": "customer_deposit_receipt",
+        "policy_refs": [
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Allocate a customer deposit by drawing down the per-file clearing balance and increasing the specific consumer deposit liability; executed per consumer line item."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Record the FDIC fund location movement by debiting Cash Balances and crediting the consumer's FBO Main account on the allocation ledger."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Per-file clearing instance (Master FBO - Clearing) on the economic ledger; debited to draw down the clearing balance for this consumer's allocation.",
+        "mask": "10101",
+        "purpose": "clearing_per_file"
+      },
+      {
+        "description": "Consumer on-balance-sheet deposit liability (funds on hold pending reconciliation) credited for the allocation amount.",
+        "mask": "20101",
+        "purpose": "consumer_hold"
+      },
+      {
+        "description": "Cash Balances - Clearing asset on the allocation ledger; debited to record the expected FDIC fund location for this consumer's deposit.",
+        "mask": "11901",
+        "purpose": "cash_balances_clearing"
+      },
+      {
+        "description": "Consumer Master FBO Clearing liability on the allocation ledger; credited for FDIC fund location tracking of expected movements.",
+        "mask": "21101",
+        "purpose": "consumer_fbo_clearing"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "statement_file_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Bank statement file reference for traceability."
+        },
+        "consumer_external_id": {
+          "maxLength": 100,
+          "description": "Consumer entity external identifier for routing to the correct consumer accounts.",
+          "type": "string",
+          "minLength": 1
+        },
+        "line_reference": {
+          "description": "Deterministic per-line identifier within the allocation file for idempotency/deduplication.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "allocation_file_id": {
+          "description": "Allocation file reference used to select the per-file Clearing (10101) instance being drawn down.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "required": [
+        "allocation_file_id",
+        "statement_file_id",
+        "consumer_external_id",
+        "line_reference"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_hold.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.clearing_per_file.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Draw down per-file clearing for this consumer's share; funds placed on hold pending bank confirmation.",
+        "leg_number": 1,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "customer_deposit_receipt"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_fbo_clearing.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.cash_balances_clearing.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Record expected FDIC fund location for this consumer's deposit on the allocation ledger.",
+        "leg_number": 2,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5101
+          ],
+          "event_id": "01952000-0000-7001-8000-000000000001",
+          "event_source": "api",
+          "extra_metadata": {
+            "allocation_file_id": "alloc-2026-02-23-001",
+            "statement_file_id": "stmt-2026-02-23-A",
+            "consumer_external_id": "cust-a-001",
+            "line_reference": "row_000001"
+          },
+          "occurred_at": 1771804800000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000002",
+              "purpose": "clearing_per_file"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca002",
+              "purpose": "consumer_hold"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "cash_balances_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca002",
+              "purpose": "consumer_fbo_clearing"
+            }
+          ],
+          "amount": 800000
+        },
+        "expected_transfers": [
+          {
+            "amount": 800000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000ca002",
+            "debit_account_id": "50050000-0000-4001-a000-000000000002",
+            "leg_number": 1
+          },
+          {
+            "amount": 800000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000ca002",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 2
+          }
+        ],
+        "name": "consumer_a_allocation_8000",
+        "description": "Customer A allocation of $8,000.00 from allocation file alloc-2026-02-23-001."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5101
+          ],
+          "event_id": "01952000-0000-7001-8000-000000000002",
+          "event_source": "api",
+          "extra_metadata": {
+            "allocation_file_id": "alloc-2026-02-23-001",
+            "statement_file_id": "stmt-2026-02-23-A",
+            "consumer_external_id": "cust-b-001",
+            "line_reference": "row_000002"
+          },
+          "occurred_at": 1771804805000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000002",
+              "purpose": "clearing_per_file"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000cb002",
+              "purpose": "consumer_hold"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "cash_balances_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000cb002",
+              "purpose": "consumer_fbo_clearing"
+            }
+          ],
+          "amount": 200000
+        },
+        "expected_transfers": [
+          {
+            "amount": 200000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000cb002",
+            "debit_account_id": "50050000-0000-4001-a000-000000000002",
+            "leg_number": 1
+          },
+          {
+            "amount": 200000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000cb002",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 2
+          }
+        ],
+        "name": "consumer_b_allocation_2000",
+        "description": "Customer B allocation of $2,000.00 from allocation file alloc-2026-02-23-001."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019ce8c3-f272-783e-932a-160054fddfa0",
+    "state": "DRAFT",
+    "revision": 11,
+    "transition_date": 1773431681650,
+    "content_hash": "sha256:229aa72b3aef903cbc23f12fc8957731b3ee7f49dda472e56c4a3ada2769b963",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

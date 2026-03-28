@@ -1,0 +1,113 @@
+{
+  "workflow": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/v1.1.0/workflow.schema.json",
+    "workflow_id": "019cb651-a4e8-7273-a2b3-07c07a140f4d",
+    "code": "deposit-allocation-v4",
+    "site_id": 5,
+    "name": "Deposit Allocation v4",
+    "description": "#UC1 # Deposit Allocation Processing\n\nProcesses inbound deposit allocation files through automated ingestion, consumer matching, and bank-confirmed release. The allocation file and bank statement can arrive in either order \u2014 reconciliation gates on both being present before releasing funds.\n\n## Phase 1 -- File Ingestion & Bank Confirmation (Steps 1-3)\n\nTwo independent inputs seed the workflow: the bank statement (T5401) establishes a control position confirming physical cash, while the allocation file header (T5108) and detail lines (T5103) load the expected per-consumer liabilities into staging. Neither blocks the other.\n\n## Phase 2 -- Consumer Matching (Step 4)\n\nRaw consumer identifiers from the file are resolved to real accounts (T5104). Matched funds move to Hold rather than Available \u2014 the bank may not have confirmed the cash yet.\n\n## Phase 3 -- Reconciliation & Release (Steps 5-6)\n\nOnce both the bank statement and allocation file are present, the control flush (T5407) pairs them at the aggregate level. Per-consumer releases (T5402) then promote Hold to Available. When all releases complete and the control flush has fired, every temporary account nets to zero.\n\n**Invariants:** Clearing Files zeroes when all detail lines load. Control zeroes when the bank statement pairs with the allocation file. Unallocated Customer zeroes when all consumers match. Hold zeroes when all consumers release.",
+    "require_shared_ledgers": false,
+    "steps": [
+      {
+        "id": "alloc_file_header",
+        "template_id": 5108,
+        "event_sources": [
+          "allocation-engine"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "file-ingestion",
+        "depends_on_step_ids": [],
+        "diagram_label": "Allocation Batch Header",
+        "description": "Establish the expected total for this allocation file. The per-file clearing balance acts as a loading checksum -- it must reach zero once every detail line (T5103) has loaded, proving the file was ingested completely.",
+        "trigger": "allocation_file_received"
+      },
+      {
+        "id": "alloc_file_detail",
+        "template_id": 5103,
+        "event_sources": [
+          "allocation-engine"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "file-ingestion",
+        "depends_on_step_ids": [],
+        "diagram_label": "Allocation Detail Line",
+        "description": "Load a single deposit line into the unallocated staging area. This is the anchor event for the deposit's lifecycle -- its children (T5104, T5402) track the deposit through matching and release. Carries the raw consumer_external_id for later resolution.",
+        "trigger": "allocation_detail_line_loaded"
+      },
+      {
+        "id": "bank_statement_line",
+        "template_id": 5401,
+        "event_sources": [
+          "bank-feed"
+        ],
+        "examples": [
+          2
+        ],
+        "group": "bank-confirmation",
+        "depends_on_step_ids": [],
+        "diagram_label": "Bank Statement Inbound",
+        "description": "Confirm physical cash has arrived at the FBO bank account. Creates a per-batch control position that will later be paired against the allocation file via T5407. Can arrive before or after the allocation file.",
+        "trigger": "bank_statement_received"
+      },
+      {
+        "id": "consumer_match",
+        "template_id": 5104,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "consumer-matching",
+        "depends_on_step_ids": [
+          "alloc_file_detail"
+        ],
+        "diagram_label": "Consumer Match",
+        "description": "Resolve a raw consumer_external_id to a real account and move the deposit from unallocated staging to that consumer's hold position. Funds go to Hold (not Available) because matching may complete before the bank statement confirms the cash.",
+        "trigger": "consumer_matched"
+      },
+      {
+        "id": "control_flush",
+        "template_id": 5407,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "reconciliation",
+        "depends_on_step_ids": [
+          "bank_statement_line"
+        ],
+        "diagram_label": "Control Flush",
+        "description": "Pair the bank statement against the allocation file by moving the bank-confirmed control position into suspense. Fires once per file pair -- independent of consumer release order. When combined with consumer releases, suspense nets to zero.",
+        "trigger": "control_flush_triggered"
+      },
+      {
+        "id": "consumer_release",
+        "template_id": 5402,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "reconciliation",
+        "depends_on_step_ids": [
+          "consumer_match"
+        ],
+        "diagram_label": "Consumer Release",
+        "description": "Release a consumer's funds from Hold to Available, completing the deposit lifecycle for this consumer. Fires per consumer after the reconciliation service confirms the bank statement and allocation file agree. When all consumers are released and T5407 has fired, all temporary accounts net to zero.",
+        "trigger": "consumer_release_triggered"
+      }
+    ]
+  },
+  "status": "DRAFT"
+}

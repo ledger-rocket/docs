@@ -1,0 +1,176 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5408,
+    "name": "bank_statement_ingestion_outbound",
+    "description": "Ingest an outbound bank statement line item (wire transfer, ACH payment, etc.) into the Economic ledger. Debits Control (10102) to stage the outflow for reconciliation; credits Settled (10100) to recognise confirmed cash leaving the bank account.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification between Control and Settled; total house assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "house"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "DEPOSITS",
+    "event_type": "TRANSFER",
+    "trigger": "System processes a single outbound line item from a bank statement file; fires once per outbound line item.",
+    "ledger_scope_descriptions": {
+      "house": "Reporting entity (house) ledger representing confirmed bank cash (Settled) and reconciliation staging cash (Control); no customer subledger impact."
+    },
+    "accounting_treatments": [
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_305",
+            "version": 1
+          }
+        ],
+        "description": "Reclassify confirmed outbound cash from Control staging to Settled; no P&L impact and no customer balance impact."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "House settled bank cash account (confirmed physical cash at Purple Splash FBO bank account).",
+        "mask": "10100",
+        "purpose": "settled_account"
+      },
+      {
+        "description": "House control (reconciliation staging) bank cash account; per-file instance selected by statement_file_id external_id.",
+        "mask": "10102",
+        "purpose": "control_account"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "transaction_ref": {
+          "description": "Bank-provided transaction reference identifier for this statement line item.",
+          "type": "string"
+        },
+        "line_item_description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional human-readable description from the bank statement line."
+        },
+        "statement_file_id": {
+          "description": "External_id of the source bank statement file; used to select the per-file Control account instance.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "statement_file_id",
+        "transaction_ref"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.settled_account.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.control_account.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Ingest outbound bank statement line; control stages the debit for reconciliation while settled reflects the cash decrease.",
+        "leg_number": 1,
+        "ledger_scope": "house",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5408
+          ],
+          "event_id": "018de6b1-7e55-7b7a-9f7b-9b2f0c4b0001",
+          "event_source": "api",
+          "extra_metadata": {
+            "statement_file_id": "FBO-STMT-2026-02-23",
+            "transaction_ref": "WIRE-OUT-001",
+            "line_item_description": "OUTBOUND WIRE TRANSFER"
+          },
+          "occurred_at": 1771804800000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000010101",
+              "purpose": "settled_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            }
+          ],
+          "amount": 100000
+        },
+        "expected_transfers": [
+          {
+            "amount": 100000,
+            "credit_account_id": "50050000-0000-4001-a000-000000010101",
+            "debit_account_id": "50050000-0000-4001-a000-000000000003",
+            "leg_number": 1
+          }
+        ],
+        "name": "outbound_wire_1000",
+        "description": "Outbound wire statement line item ($1,000). Dr Control / Cr Settled."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5408
+          ],
+          "event_id": "018de6b1-7e55-7b7a-9f7b-9b2f0c4b0002",
+          "event_source": "api",
+          "extra_metadata": {
+            "statement_file_id": "FBO-STMT-2026-02-23",
+            "transaction_ref": "ACH-OUT-002",
+            "line_item_description": "OUTBOUND ACH PAYMENT"
+          },
+          "occurred_at": 1771804801000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000010101",
+              "purpose": "settled_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            }
+          ],
+          "amount": 50000
+        },
+        "expected_transfers": [
+          {
+            "amount": 50000,
+            "credit_account_id": "50050000-0000-4001-a000-000000010101",
+            "debit_account_id": "50050000-0000-4001-a000-000000000003",
+            "leg_number": 1
+          }
+        ],
+        "name": "outbound_ach_500",
+        "description": "Outbound ACH statement line item ($500). Dr Control / Cr Settled."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d2ab8-f95b-7cf0-8c41-30b007d83b00",
+    "state": "DRAFT",
+    "revision": 6,
+    "transition_date": 1774538258779,
+    "content_hash": "sha256:47cff781dae0df06a0ea9c26dcaf3c158cc2f00ec4c3ef67757b6ec27c55583e",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

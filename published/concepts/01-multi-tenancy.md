@@ -1,0 +1,65 @@
+# Multi-Tenancy
+
+## Sites as Tenant Boundaries
+
+LedgerRocket is a multi-tenant platform. A **site** is the top-level isolation boundary -- every entity, ledger, account, template, event, and balance belongs to exactly one site. Cross-site queries are forbidden at the API layer and enforced by every service.
+
+A site represents a distinct client or operational environment. Each site has its own:
+
+- Chart of accounts (account codes)
+- Entities and ledgers
+- Templates and business rules
+- Transfers and balances
+- Reporting currency
+
+## site_id Scoping
+
+Every API request is scoped to a `site_id` (a positive integer). The `site_id` appears in request bodies, path parameters, or query parameters depending on the endpoint. All three services -- Ledger Service, Event Service, and Balance Service -- enforce site isolation independently.
+
+When you create any resource (entity, ledger, account, template, or event), you must provide a `site_id`. When you query resources, results are filtered to that site.
+
+## Creating and Managing Sites
+
+Sites are managed through the Ledger Service API.
+
+### Create a site
+
+```bash
+curl -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites \
+  -H "x-api-key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "records": [
+      {
+        "name": "Acme Payments",
+        "description": "Production site for Acme payment processing",
+        "reporting_currency_code": "USD"
+      }
+    ]
+  }'
+```
+
+The `site_id` can be auto-assigned or explicitly provided. The `reporting_currency_code` sets the ISO 4217 currency used for consolidated financial reporting.
+
+### List sites
+
+```bash
+curl https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites \
+  -H "x-api-key: $API_KEY"
+```
+
+### Get a single site
+
+```bash
+curl https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1 \
+  -H "x-api-key: $API_KEY"
+```
+
+## Cross-Site Isolation Guarantees
+
+- **Data isolation**: No API call can read or write data belonging to another site.
+- **System accounts**: Deduplication and rollup accounts are provisioned per-site.
+- **Cache isolation**: The platform cache partitions all cached reference data by `site_id`.
+- **Transfer integrity**: TigerBeetle ledger IDs encode the site, so transfers cannot cross site boundaries even at the storage layer.
+
+A site is the first thing you create when onboarding a new client to the platform. All subsequent resources -- entities, ledgers, accounts, and templates -- are created within that site.

@@ -28,7 +28,7 @@ LedgerRocket is a programmable double-entry bookkeeping platform that transforms
 - **Dimensional account model** — accounts classified by EntityScope, CounterpartyType, FunctionalDomain, and ValuationRole
 - **Template-driven processing** — JSON templates with CEL expressions define how events become transfers
 - **Maker-checker governance** — templates go through DRAFT → PENDING_APPROVAL → LIVE → DEPRECATED lifecycle
-- **Real-time balances** — TigerBeetle-backed balance queries with sub-millisecond latency
+- **Real-time balances** — balance queries with sub-millisecond latency
 - **Atomic event processing** — events produce balanced double-entry transfers or fail entirely
 
 ## Architecture
@@ -40,7 +40,7 @@ LedgerRocket consists of four microservices:
 | **Ledger Service** | Reference data authority — sites, entities, ledgers, accounts, account codes |
 | **Accounting Rule Engine** | Template lifecycle — authoring, validation, maker-checker approval |
 | **Event Service** | Atomic event processing — validates events, evaluates templates, creates transfers |
-| **Balance Service** | Balance queries — real-time (TigerBeetle), historical (Athena), chain analysis |
+| **Balance Service** | Balance queries — real-time, historical, chain analysis |
 
 <Card title="API Reference" icon="square-terminal" href="https://docs.ledgerrocket.com">
   Interactive API documentation powered by Scalar

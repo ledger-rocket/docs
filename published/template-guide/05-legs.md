@@ -1,0 +1,237 @@
+# Legs
+
+Legs define the actual double-entry transfers that a template generates. Each leg produces one transfer: a debit to one account and a credit to another on the same ledger. A template must have at least one leg and can have up to 64.
+
+## Leg Structure
+
+Each leg has the following fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `leg_number` | integer | Yes | Sequential identifier (1--1000). Determines transfer ordering within the event. |
+| `debit_account` | string | Yes | Reference to the account being debited. Either a direct selector or a variable name. |
+| `debit_account_type` | string | Yes | Expected account type for the debit account: `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE`, `SUPPLEMENTAL`. |
+| `credit_account` | string | Yes | Reference to the account being credited. Either a direct selector or a variable name. |
+| `credit_account_type` | string | Yes | Expected account type for the credit account. Same values as `debit_account_type`. |
+| `amount` | string | Yes | Reference to the transfer amount. Either `event.amount`, a variable name, or a direct selector. |
+| `description` | string | Yes | Human-readable description of this leg's purpose. Max 500 characters. |
+| `ledger_scope` | string | Yes | Identifies which ledger this transfer belongs to. Must be `lower_snake_case` and match a key in the template's `ledger_scope_descriptions`. |
+| `treatment_type` | string | Yes | Accounting treatment type for this leg. Must match the `type` field of one of the template's `accounting_treatments`. |
+| `condition` | string | No | Reference to a boolean variable. When present, the leg is skipped if the variable evaluates to `false`. |
+
+## Account Selectors
+
+Leg account fields reference accounts using the purpose names defined in `account_code_validations`:
+
+```text
+accounts.{purpose}.account_id
+```
+
+For example, given these account code validations:
+
+```json
+"account_code_validations": [
+    { "purpose": "bank_fees_account", "mask": "50100", "description": "..." },
+    { "purpose": "suspense_account", "mask": "10103", "description": "..." }
+]
+```
+
+The legs would reference:
+
+```json
+{
+    "debit_account": "accounts.bank_fees_account.account_id",
+    "credit_account": "accounts.suspense_account.account_id"
+}
+```
+
+## Account Types
+
+The `debit_account_type` and `credit_account_type` fields declare the expected account type for each side of the transfer. The engine validates that the actual account matches the declared type at processing time.
+
+Valid values:
+
+| Value | Description |
+|-------|-------------|
+| `ASSET` | Asset accounts (cash, receivables, suspense, clearing) |
+| `LIABILITY` | Liability accounts (customer deposits, payables) |
+| `EQUITY` | Equity accounts |
+| `REVENUE` | Revenue accounts |
+| `EXPENSE` | Expense accounts (fees, charges) |
+| `SUPPLEMENTAL` | Off-balance-sheet tracking accounts (intentions, supplemental positions) |
+
+## Amount Expressions
+
+The `amount` field references the transfer amount. It is a reference, not a CEL expression. Common patterns:
+
+**Event amount (most common):**
+
+```json
+"amount": "event.amount"
+```
+
+This passes through the event's monetary amount directly to the transfer.
+
+**Variable reference:**
+
+```json
+"amount": "fee_amount"
+```
+
+This uses a value computed by a variable. The variable must evaluate to a positive integer.
+
+## Ledger Scope
+
+The `ledger_scope` field identifies which ledger this leg's transfer belongs to. Templates that operate on multiple ledgers (e.g., economic + allocation) use different scopes for different legs.
+
+The scope value must match a key in the template's `ledger_scope_descriptions`:
+
+```json
+"ledger_scope_descriptions": {
+    "operational": "Operational ledger (ID 5001) where Settled represents confirmed bank cash.",
+    "fdic_tracking": "FDIC tracking ledger (ID 5002) where Cash Balances positions are tracked."
+}
+```
+
+## Treatment Type
+
+Each leg references an accounting treatment by its `type` field. This connects the leg to the template's `accounting_treatments` array for audit and policy documentation.
+
+```json
+"treatment_type": "internal_transfer"
+```
+
+The value must match the `type` of one of the template's `accounting_treatments`.
+
+## Single-Leg Templates
+
+The simplest templates have one leg that moves the event amount between two accounts:
+
+```json
+{
+    "template_id": 5403,
+    "name": "suspense_resolve_bank_fee",
+    "legs": [
+        {
+            "leg_number": 1,
+            "debit_account": "accounts.bank_fees_account.account_id",
+            "debit_account_type": "EXPENSE",
+            "credit_account": "accounts.suspense_account.account_id",
+            "credit_account_type": "ASSET",
+            "amount": "event.amount",
+            "description": "Recognize the orphaned suspense balance as a bank service charge.",
+            "ledger_scope": "economic",
+            "treatment_type": "adjustment_manual"
+        }
+    ]
+}
+```
+
+This leg debits Bank Fees (expense) and credits Suspense (asset), recognizing a bank fee that was previously parked in suspense.
+
+## Multi-Leg Templates
+
+Templates that operate across multiple ledgers or perform multi-step accounting use multiple legs. Each leg runs independently -- they are not conditional on each other (unless using the `condition` field).
+
+### Two-Leg: Dual-Ledger Operations
+
+**Template 5401** (`bank_statement_ingestion_inbound`) records an inbound bank statement line on both the economic and allocation ledgers:
+
+```json
+{
+    "template_id": 5401,
+    "name": "bank_statement_ingestion_inbound",
+    "legs": [
+        {
+            "leg_number": 1,
+            "debit_account": "accounts.settled_account.account_id",
+            "debit_account_type": "ASSET",
+            "credit_account": "accounts.control_account.account_id",
+            "credit_account_type": "ASSET",
+            "amount": "event.amount",
+            "description": "Record inbound bank cash: debit Settled, credit Control.",
+            "ledger_scope": "operational",
+            "treatment_type": "internal_transfer"
+        },
+        {
+            "leg_number": 2,
+            "debit_account": "accounts.cash_balances_fbo.account_id",
+            "debit_account_type": "ASSET",
+            "credit_account": "accounts.cash_balances_control.account_id",
+            "credit_account_type": "ASSET",
+            "amount": "event.amount",
+            "description": "Record FDIC fund location: debit Cash Balances FBO, credit Cash Balances Control.",
+            "ledger_scope": "fdic_tracking",
+            "treatment_type": "internal_transfer"
+        }
+    ]
+}
+```
+
+Leg 1 operates on the economic/operational ledger. Leg 2 mirrors the same amount on the FDIC tracking/allocation ledger. Both use `event.amount` -- the same dollar value is recorded on both ledgers for different tracking purposes.
+
+### Two-Leg: Through-Account (Suspense Clearing)
+
+**Template 5406** (`control_orphan_resolution`) moves funds through a suspense account in two steps:
+
+```json
+{
+    "template_id": 5406,
+    "name": "control_orphan_resolution",
+    "legs": [
+        {
+            "leg_number": 1,
+            "debit_account": "accounts.suspense_account.account_id",
+            "debit_account_type": "ASSET",
+            "credit_account": "accounts.control_account.account_id",
+            "credit_account_type": "ASSET",
+            "amount": "event.amount",
+            "description": "Flush orphaned Control residual into Suspense clearing account.",
+            "ledger_scope": "primary",
+            "treatment_type": "settlement_clearing"
+        },
+        {
+            "leg_number": 2,
+            "debit_account": "accounts.destination_account.account_id",
+            "debit_account_type": "EXPENSE",
+            "credit_account": "accounts.suspense_account.account_id",
+            "credit_account_type": "ASSET",
+            "amount": "event.amount",
+            "description": "Allocate Suspense balance to final destination account.",
+            "ledger_scope": "primary",
+            "treatment_type": "adjustment_manual"
+        }
+    ]
+}
+```
+
+Leg 1 moves the orphaned balance from Control into Suspense. Leg 2 moves it from Suspense into the destination account (e.g., bank fees). The suspense account appears on both sides, netting to zero.
+
+## Conditional Legs
+
+Legs can include an optional `condition` field that references a boolean variable. When the condition evaluates to `false`, the leg is skipped entirely:
+
+```json
+"variables": [
+    {
+        "name": "has_expedite_fee",
+        "value": "event.extra_metadata.priority == \"expedited\"",
+        "description": "True when expedited processing is requested."
+    }
+],
+"legs": [
+    {
+        "leg_number": 1,
+        "amount": "event.amount",
+        "condition": "has_expedite_fee",
+        "description": "Charge expedite fee only when expedited."
+    }
+]
+```
+
+## Key Constraints
+
+- **No expressions in legs.** Leg fields are pure references (variable names or direct selectors like `accounts.{purpose}.account_id`). All computation must happen in variables.
+- **Positive amounts only.** Transfer amounts must be positive integers. To reverse a flow, swap which account is debited vs. credited.
+- **Same-ledger transfers.** Both the debit and credit account in a single leg must belong to the same ledger (unless `allows_intercompany_transfers` capability is enabled).
+- **Max 64 legs per template.**

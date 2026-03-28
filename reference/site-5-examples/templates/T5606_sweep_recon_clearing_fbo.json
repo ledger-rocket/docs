@@ -1,0 +1,129 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5606,
+    "name": "sweep_recon_clearing_fbo",
+    "description": "UC6 Step 6: Reconciliation event (clearing) for Master FBO side. Zero out Master FBO Clearing Total (10101) to Master FBO Suspense (10103) on the economic ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: Clearing Total to Suspense. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation event (clearing) -- matching engine pairs sweep clearing against bank statement.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "operational": "Operational ledger (ID 5001) where clearing is flushed to suspense for the FBO side."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Flush FBO clearing balance to suspense for bank payment reconciliation."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Master FBO Clearing Total asset; debited to zero clearing balance.",
+        "mask": "10101",
+        "purpose": "fbo_clearing_total"
+      },
+      {
+        "description": "Master FBO Suspense asset; credited to stage for bank payment reconciliation.",
+        "mask": "10103",
+        "purpose": "fbo_suspense"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "recon_id": {
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Reconciliation event identifier.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "recon_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.fbo_suspense.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.fbo_clearing_total.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Flush Master FBO clearing into suspense for bank statement matching.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5606
+          ],
+          "event_id": "01956060-0000-7606-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-clr-fbo-001"
+          },
+          "occurred_at": 1772790400000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000101001",
+              "purpose": "fbo_clearing_total"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "fbo_suspense"
+            }
+          ],
+          "amount": 5000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000004",
+            "debit_account_id": "50050000-0000-4001-a000-000000101001",
+            "leg_number": 1
+          }
+        ],
+        "name": "recon_clearing_fbo_50k_fdic",
+        "description": "Flush $50,000 FBO Clearing Total to Suspense after FDIC sweep rebalancing."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c2d-e922-7087-bff3-1b9ea7044824",
+    "state": "DRAFT",
+    "revision": 8,
+    "transition_date": 1774294264098,
+    "content_hash": "sha256:ca7fb327213808e9463a0c9ce80e8fc34a549a2409ba881e07e8d00fc5fe93b8",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

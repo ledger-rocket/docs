@@ -1,0 +1,191 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5209,
+    "name": "disbursement_allocate_return",
+    "description": "Match a returned deposit from the Unallocated Customer (20900) account to a specific customer's Hold (20101) account. Mirrors on the allocation ledger by moving from Unallocated Customer - Master FBO (21900) to Customer - Master FBO Clearing (21101). Structurally identical to UC1's T5104 (consumer match) but in the disbursement returns context.",
+    "financial_statements_impact": [
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability-to-liability reclassification on the economic ledger: Unallocated Customer (20900) decreases and Customer Hold (20101) increases by the same amount. Total liabilities unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability-to-liability reclassification on the allocation ledger: Unallocated Customer - Master FBO (21900) decreases and Customer - Master FBO Clearing (21101) increases. Total liabilities unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "DISBURSEMENTS",
+    "product": "DISBURSEMENTS",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation service matches an unallocated return deposit to a specific customer. Fires once per matched return.",
+    "ledger_scope_descriptions": {
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where the FDIC mirror reclassifies from Unallocated Customer - Master FBO to Customer - Master FBO Clearing.",
+      "operational": "Operational ledger (ID 5001) where the returned deposit is reclassified from Unallocated Customer to Customer Hold."
+    },
+    "accounting_treatments": [
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "IAS_1",
+            "version": 1
+          }
+        ],
+        "description": "Reclassify the returned deposit liability from the unallocated pool to a specific customer's hold account."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "IAS_1",
+            "version": 1
+          }
+        ],
+        "description": "Mirror the reclassification on the allocation ledger for FDIC position tracking."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Unallocated Customer - Disbursement Returns; debited to remove the returned amount from the unallocated pool.",
+        "mask": "20900",
+        "purpose": "unallocated_customer"
+      },
+      {
+        "description": "Customer - Hold; credited to park the matched return in the customer's hold account pending release.",
+        "mask": "20101",
+        "purpose": "consumer_hold"
+      },
+      {
+        "description": "Unallocated Customer - Master FBO on the allocation ledger; debited to remove the FDIC position from the unallocated pool.",
+        "mask": "21900",
+        "purpose": "unallocated_fbo"
+      },
+      {
+        "description": "Customer - Master FBO Clearing on the allocation ledger; credited to establish the customer's FDIC position.",
+        "mask": "21101",
+        "purpose": "consumer_fbo_hold"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "ach_file_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "ACH return file containing this return."
+        },
+        "original_return_event_id": {
+          "maxLength": 100,
+          "description": "Links to the T5207 detail line event for lineage.",
+          "type": "string"
+        },
+        "consumer_external_id": {
+          "description": "Consumer entity external identifier for the matched return.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "required": [
+        "consumer_external_id",
+        "ach_file_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_hold.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.unallocated_customer.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Reclassify the returned deposit from Unallocated Customer to the matched customer's Hold account.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "internal_transfer"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_fbo_hold.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.unallocated_fbo.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Mirror the reclassification on the allocation ledger for FDIC position tracking.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5209
+          ],
+          "event_id": "01952090-0000-7209-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "consumer_external_id": "cust-a-001",
+            "ach_file_id": "ach-return-2026-03-02-001"
+          },
+          "occurred_at": 1772617700000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000020901",
+              "purpose": "unallocated_customer"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca002",
+              "purpose": "consumer_hold"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000021901",
+              "purpose": "unallocated_fbo"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca002",
+              "purpose": "consumer_fbo_hold"
+            }
+          ],
+          "amount": 20000
+        },
+        "expected_transfers": [
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000ca002",
+            "debit_account_id": "50050000-0000-4001-a000-000000020901",
+            "leg_number": 1
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000ca002",
+            "debit_account_id": "50050000-0000-4002-a000-000000021901",
+            "leg_number": 2
+          }
+        ],
+        "name": "allocate_return_cust_a_200",
+        "description": "Match Customer A's $200.00 return: move from Unallocated Customer to Customer A Hold, with allocation ledger mirror."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c29-0c50-78c8-8fe4-91bce3be4043",
+    "state": "DRAFT",
+    "revision": 2,
+    "transition_date": 1774293945424,
+    "content_hash": "sha256:4d5fb3bf0b29a7c79fd970133556cc4ff00610e8bdc166264099de224576e616",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

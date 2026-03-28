@@ -1,0 +1,203 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5407,
+    "name": "reconciliation_flush_control",
+    "description": "Flush a matched bank statement Control balance into Suspense by debiting Control (10102) and crediting Suspense (10103) on the economic ledger, with a mirror leg debiting Cash Balances Control (11902) and crediting Cash Balances Suspense (11903) on the allocation ledger. Fires once per matched bank statement file. When paired with the Clearing flush (T5402) for the same amount, Suspense nets to zero on both ledgers, proving the bank statement and allocation file agree.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on the economic ledger: Control (10102) decreases and Suspense (10103) increases by the same amount. Total economic ledger assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on the allocation ledger: Cash Balances Control (11902) decreases and Cash Balances Suspense (11903) increases by the same amount. Total allocation ledger assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Bank statement file is matched against an allocation file. The per-file Control (10102) balance is flushed to Suspense, with a mirror entry on the allocation ledger.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where Cash Balances Control and Cash Balances Suspense mirror the economic reconciliation positions for FDIC tracking.",
+      "operational": "Operational ledger (ID 5001) where Control and Suspense are maintained for reconciliation."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "IAS_1",
+            "version": 1
+          },
+          {
+            "id": "IFRS_9",
+            "version": 1
+          }
+        ],
+        "description": "Flush the bank statement control balance into Suspense for reconciliation against the corresponding Clearing flush."
+      },
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "IAS_1",
+            "version": 1
+          },
+          {
+            "id": "IFRS_9",
+            "version": 1
+          }
+        ],
+        "description": "Mirror the control-to-suspense flush on the allocation ledger for FDIC position tracking."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Bank statement control account (Master FBO - Control); debited to flush the per-file bank statement balance.",
+        "mask": "10102",
+        "purpose": "control_account"
+      },
+      {
+        "description": "Reconciliation suspense / mixing bowl (Master FBO - Suspense); credited to offset the debit from the Clearing flush (T5402).",
+        "mask": "10103",
+        "purpose": "suspense_account"
+      },
+      {
+        "description": "Cash Balances Control on the allocation ledger; debited to flush the FDIC control position for this bank statement.",
+        "mask": "11902",
+        "purpose": "cash_balances_control"
+      },
+      {
+        "description": "Cash Balances Suspense on the allocation ledger; credited to mirror the economic suspense position for FDIC tracking.",
+        "mask": "11903",
+        "purpose": "cash_balances_suspense"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "allocation_file_id": {
+          "description": "Corresponding allocation file for reconciliation pairing.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "bank_name": {
+          "type": "string",
+          "description": "Bank identifier for routing/namespace."
+        },
+        "statement_file_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Bank statement file whose Control balance is being flushed."
+        }
+      },
+      "required": [
+        "statement_file_id",
+        "allocation_file_id",
+        "bank_name"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.suspense_account.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.control_account.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Flush Control into Suspense: debit Control (clears credit balance), credit Suspense (offsets Clearing flush debit).",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cash_balances_suspense.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.cash_balances_control.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the Control-to-Suspense flush on the allocation ledger for FDIC position tracking.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5407
+          ],
+          "event_id": "019dc630-1a8a-7a7a-a4a6-4e0a17a62f02",
+          "event_source": "api",
+          "extra_metadata": {
+            "statement_file_id": "stmt-2026-02-23-A",
+            "allocation_file_id": "alloc-2026-02-23-001",
+            "bank_name": "chase"
+          },
+          "occurred_at": 1771900005000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "suspense_account"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "cash_balances_control"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011903",
+              "purpose": "cash_balances_suspense"
+            }
+          ],
+          "amount": 1000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 1000000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000004",
+            "debit_account_id": "50050000-0000-4001-a000-000000000003",
+            "leg_number": 1
+          },
+          {
+            "amount": 1000000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011903",
+            "debit_account_id": "50050000-0000-4002-a000-000000011902",
+            "leg_number": 2
+          }
+        ],
+        "name": "control_flush_10k",
+        "description": "Flush $10,000.00 Control balance to Suspense (economic + allocation) for bank statement stmt-2026-02-23-A, matching the Clearing flush for alloc-2026-02-23-001. Suspense nets to zero on both ledgers."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c1d-fc62-7279-8206-e8830a9aa1b0",
+    "state": "DRAFT",
+    "revision": 14,
+    "transition_date": 1774293220450,
+    "content_hash": "sha256:344d12a287acd4de9a329f2fbf99137c82afd688e8621570639c92b040ffbff6",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

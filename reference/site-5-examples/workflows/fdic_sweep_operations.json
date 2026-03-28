@@ -1,0 +1,203 @@
+{
+  "workflow": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/v1.1.0/workflow.schema.json",
+    "workflow_id": "019cab3b-9824-7d0c-83f3-9e31560dc524",
+    "code": "fdic-sweep-operations",
+    "site_id": 5,
+    "name": "FDIC Sweep Operations",
+    "description": "#UC6 FDIC Sweep Operations\nManages the full lifecycle of FDIC insurance sweeps between the Master FBO and the Sweep Network. When customer balances approach FDIC insurance limits, the sweep engine identifies net movements needed to rebalance across the Sweep Network. Both sides reconcile independently through identical three-stage patterns \u2014 clearing, bank payment, and cash-in-transit.\n\nPhase 1 -- Aggregation & Allocation (Steps 1-2)\nThe sweep engine creates an aggregate clearing position for the batch (T5601), then allocates per-customer expected movements on the FDIC tracking ledger (T5602). The aggregate is the anchor for batch-level reconciliation; the per-customer allocation anchors each customer's cash-in-transit chain.\n\nPhase 2 -- Payment & Bank Confirmation (Steps 3-5)\nTreasury instructs the payment (T5603), clearing the sweep intentions from the queue. Bank statements then confirm cash has physically left the FBO (T5604) and arrived at the Sweep Network (T5605). The two statements are independent \u2014 either can arrive first.\n\nPhase 3 -- FBO Reconciliation (Steps 6-8)\nThree-stage reconciliation on the FBO side: clearing flush to suspense (T5606), bank statement pairing against clearing (T5607), then per-customer FDIC position moves from Master FBO to Cash in Transit (T5608).\n\nPhase 4 -- Sweep Reconciliation (Steps 9-11)\nMirrors the FBO pattern on the Sweep Network side: clearing flush (T5609), bank statement pairing (T5610), then per-customer FDIC position moves from Cash in Transit to their final position at the Sweep Network (T5611). When both T5608 and T5611 have fired for a customer, their sweep is complete.\n\nInvariants: Sweep queue zeroes when payment is instructed. FBO and Sweep clearing each zero after their three-stage reconciliation completes. Cash in Transit zeroes when both sides finish per-customer moves. FDIC positions reflect the physical location of funds across the Sweep Network at all times.",
+    "require_shared_ledgers": true,
+    "steps": [
+      {
+        "id": "sweep_aggregate_fbo_to_sweep",
+        "template_id": 5601,
+        "event_sources": [
+          "sweep-engine"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "aggregation",
+        "depends_on_step_ids": [],
+        "diagram_label": "Aggregate FBO -> Sweep",
+        "description": "Create aggregate clearing positions for an outbound sweep (FBO -> Sweep Network) and queue intentions on the sweep ledger. This is the anchor event for the aggregate reconciliation chain. One event per sweep batch.",
+        "trigger": "sweep_engine_identifies_net_movement"
+      },
+      {
+        "id": "sweep_customer",
+        "template_id": 5602,
+        "event_sources": [
+          "sweep-engine"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "allocation",
+        "depends_on_step_ids": [
+          "sweep_aggregate_fbo_to_sweep"
+        ],
+        "diagram_label": "Per-Customer Allocation",
+        "description": "Create per-customer expected movements on the FDIC tracking ledger. This is the anchor event for the customer reconciliation chain -- children T5608/T5611 track the customer's funds through cash-in-transit to their final bank position. Direction is reversible.",
+        "trigger": "sweep_customer_allocation_required"
+      },
+      {
+        "id": "sweep_payment_initiated",
+        "template_id": 5603,
+        "event_sources": [
+          "treasury"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "payment",
+        "depends_on_step_ids": [
+          "sweep_customer"
+        ],
+        "diagram_label": "Payment Initiated",
+        "description": "Clear the sweep intentions from the sweep queue ledger once the payment has been instructed to the bank. Confirms the sweep has moved from \"queued\" to \"in flight.\"",
+        "trigger": "treasury_payment_instructed"
+      },
+      {
+        "id": "bank_statement_from_fbo",
+        "template_id": 5604,
+        "event_sources": [
+          "bank-feed"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "bank-statements",
+        "depends_on_step_ids": [
+          "sweep_payment_initiated"
+        ],
+        "diagram_label": "FBO Bank Statement (Outbound)",
+        "description": "Confirm cash has physically left the Master FBO bank account. Creates a per-batch control position on the FBO side for later reconciliation.",
+        "trigger": "fbo_bank_statement_received"
+      },
+      {
+        "id": "bank_statement_to_sweep",
+        "template_id": 5605,
+        "event_sources": [
+          "bank-feed"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "bank-statements",
+        "depends_on_step_ids": [
+          "sweep_payment_initiated"
+        ],
+        "diagram_label": "Sweep Bank Statement (Inbound)",
+        "description": "Confirm cash has physically arrived at the Sweep Network. Creates a per-batch control position on the Sweep side for later reconciliation.",
+        "trigger": "sweep_bank_statement_received"
+      },
+      {
+        "id": "recon_clearing_fbo",
+        "template_id": 5606,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "reconciliation-fbo",
+        "depends_on_step_ids": [
+          "bank_statement_from_fbo"
+        ],
+        "diagram_label": "Recon Clearing (FBO)",
+        "description": "Move the FBO aggregate clearing position into suspense once all per-customer allocations are complete. First step of the FBO-side reconciliation.",
+        "trigger": "fbo_clearing_matched"
+      },
+      {
+        "id": "recon_bank_payment_fbo",
+        "template_id": 5607,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "reconciliation-fbo",
+        "depends_on_step_ids": [
+          "recon_clearing_fbo"
+        ],
+        "diagram_label": "Recon Bank Payment (FBO)",
+        "description": "Pair the FBO bank statement against the FBO clearing side, zeroing out the control position. Completes the FBO aggregate reconciliation.",
+        "trigger": "fbo_bank_payment_matched"
+      },
+      {
+        "id": "recon_cash_in_transit_fbo",
+        "template_id": 5608,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "reconciliation-fbo",
+        "depends_on_step_ids": [
+          "recon_bank_payment_fbo"
+        ],
+        "diagram_label": "Recon Cash-in-Transit (FBO)",
+        "description": "Move each customer's FDIC position from Master FBO to Cash in Transit on the FBO side. Child of T5602 -- when this fires, the customer's funds are \"in flight\" between banks.",
+        "trigger": "fbo_cash_in_transit_resolved"
+      },
+      {
+        "id": "recon_clearing_sweep",
+        "template_id": 5609,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "reconciliation-sweep",
+        "depends_on_step_ids": [
+          "bank_statement_to_sweep"
+        ],
+        "diagram_label": "Recon Clearing (Sweep)",
+        "description": "Move the Sweep aggregate clearing position into suspense. Mirrors the FBO clearing flush on the Sweep Network side.",
+        "trigger": "sweep_clearing_matched"
+      },
+      {
+        "id": "recon_bank_payment_sweep",
+        "template_id": 5610,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "reconciliation-sweep",
+        "depends_on_step_ids": [
+          "recon_clearing_sweep"
+        ],
+        "diagram_label": "Recon Bank Payment (Sweep)",
+        "description": "Pair the Sweep bank statement against the Sweep clearing side, zeroing out the control position. Completes the Sweep aggregate reconciliation.",
+        "trigger": "sweep_bank_payment_matched"
+      },
+      {
+        "id": "recon_cash_in_transit_sweep",
+        "template_id": 5611,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "reconciliation-sweep",
+        "depends_on_step_ids": [
+          "recon_bank_payment_sweep"
+        ],
+        "diagram_label": "Recon Cash-in-Transit (Sweep)",
+        "description": "Move each customer's FDIC position from Cash in Transit to their final position at the Sweep Network. Child of T5602 -- when both T5608 and T5611 have fired, the customer's sweep is complete.",
+        "trigger": "sweep_cash_in_transit_resolved"
+      }
+    ]
+  },
+  "status": "DRAFT"
+}

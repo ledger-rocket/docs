@@ -1,0 +1,107 @@
+{
+  "workflow": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/v1.1.0/workflow.schema.json",
+    "workflow_id": "019cb56e-4319-746a-983a-1cfd22c715b6",
+    "code": "deposit-allocation-v2",
+    "site_id": 5,
+    "name": "Deposit Allocation (Loader-Reconciler Model)",
+    "description": "# UC1: Processes deposit allocation files through three phases: automated loading, automated consumer matching, and human-triggered release.\n\n**Phase 1 -- File Loading (automated)**\nThe allocation-file-service ingests the file header (T5102) to establish the per-file clearing balance, then loads each detail line (T5103) into house-level staging. The loader carries raw consumer external references in metadata but does not resolve them to account IDs.\n\n**Phase 2 -- Consumer Matching (automated)**\nThe reconciliation service (T5104) resolves each raw consumer reference to a real account ID and allocates from the per-file Unallocated staging area to Consumer Hold. Funds go to Hold (not Available) because matching can run before the bank statement confirms the cash.\n\n**Phase 3 -- Human Release (manual)**\nAn operator reviews the reconciliation state -- file fully loaded, consumers matched, bank statement confirmed -- then triggers T5402 per consumer to move funds from Hold to Available.\n\nThe bank statement (T5401) and allocation file can arrive in any order. Control flush (T5407) fires once both are paired. The per-file Unallocated account (10104) gives visibility into deposits not yet matched to consumers.",
+    "require_shared_ledgers": false,
+    "steps": [
+      {
+        "id": "bank_statement_line",
+        "template_id": 5401,
+        "event_sources": [
+          "bank_statement_feed"
+        ],
+        "examples": [
+          2
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Ingest inbound bank statement line. DR Settled (10100), CR Control per-file (10102) on economic ledger; mirrors on allocation ledger. Fires per statement line from the bank-statement-feed.",
+        "trigger": "bank_statement_feed_inbound_line"
+      },
+      {
+        "id": "alloc_file_header",
+        "template_id": 5102,
+        "event_sources": [
+          "allocation_file_service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Establish per-file clearing balance from the allocation file total. DR Clearing Total (10101), CR Clearing per-file (10101). Fires once per allocation file from the allocation-file-service.",
+        "trigger": "allocation_file_service_header"
+      },
+      {
+        "id": "alloc_file_detail",
+        "template_id": 5103,
+        "event_sources": [
+          "allocation_file_service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Load a single detail line from the allocation file into house-level staging. DR Clearing per-file (10101), CR Unallocated per-file (10104). Fires per line item. The loader carries the raw consumer_external_id in metadata but does NOT resolve it to an account.",
+        "trigger": "allocation_file_service_detail_line"
+      },
+      {
+        "id": "consumer_match",
+        "template_id": 5104,
+        "event_sources": [
+          "reconciliation_service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Reconciliation service resolves a consumer external reference to a real account ID and allocates from unallocated staging to consumer hold. DR Unallocated (10104), CR Consumer Hold (20101); mirrors on allocation ledger. Funds go to Hold (not Available) because recon may fire before bank statement arrives.",
+        "trigger": "reconciliation_service_consumer_match"
+      },
+      {
+        "id": "control_flush",
+        "template_id": 5407,
+        "event_sources": [
+          "reconciliation_service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Flush per-file Control balance to Suspense once the bank statement is fully ingested and paired with the allocation file. DR Control (10102), CR Suspense (10103); mirrors on allocation ledger.",
+        "trigger": "reconciliation_service_bank_statement_paired"
+      },
+      {
+        "id": "consumer_release",
+        "template_id": 5402,
+        "event_sources": [
+          "ops_portal"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Human-triggered release after reviewing reconciliation state. Moves consumer funds from Hold to Available. DR Suspense (10103), CR Clearing Total (10101); DR Consumer Hold (20101), CR Consumer Available (20100); mirrors on allocation ledger. Fires per consumer.",
+        "trigger": "ops_portal_human_release"
+      }
+    ]
+  },
+  "status": "DELETED"
+}

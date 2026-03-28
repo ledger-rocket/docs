@@ -1,0 +1,226 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5611,
+    "name": "sweep_recon_cash_in_transit_pbx",
+    "description": "UC6 Step 11: Reconciliation cash-in-transit for Program Bank X side. Reclassifies customer allocation balances through Cash in Transit on the allocation ledger. Leg 1 moves between Cash Balances PBX Clearing (11901) and Cash Balances PBX Suspense (11903). Leg 2 moves between Customer Program Bank X (21200) and Customer Cash in Transit (21801). Direction depends on whether the customer's sweep is inbound or outbound.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: CB PBX Clearing to/from CB PBX Suspense. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability-to-liability reclassification: Customer Program Bank X to/from Customer Cash in Transit. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation engine matches PBX-side clearing against bank confirmation for a specific customer.",
+    "ledger_scope_descriptions": {
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where customer-level PBX clearing is reclassified through cash in transit."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Reclassify PBX-side clearing to suspense and move customer allocation through cash in transit."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Cash Balances PBX asset (11901 or 11903); debited side of cash balances reclassification.",
+        "mask": "119**",
+        "purpose": "debit_cash_bal"
+      },
+      {
+        "description": "Cash Balances PBX asset (11901 or 11903); credited side of cash balances reclassification.",
+        "mask": "119**",
+        "purpose": "credit_cash_bal"
+      },
+      {
+        "description": "Customer liability (21200 or 21901); debited side of customer reclassification.",
+        "mask": "21***",
+        "purpose": "debit_customer"
+      },
+      {
+        "description": "Customer liability (21200 or 21901); credited side of customer reclassification.",
+        "mask": "21***",
+        "purpose": "credit_customer"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "consumer_external_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Consumer entity external identifier."
+        },
+        "recon_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Reconciliation event identifier."
+        }
+      },
+      "required": [
+        "recon_id",
+        "consumer_external_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.credit_cash_bal.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.debit_cash_bal.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Reclassify Cash Balances PBX Clearing to/from Cash Balances PBX Suspense on allocation ledger.",
+        "leg_number": 1,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.credit_customer.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.debit_customer.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Reclassify Customer Program Bank X to/from Customer Cash in Transit on allocation ledger.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5611
+          ],
+          "event_id": "01956110-0000-7611-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-cit-pbx-001",
+            "consumer_external_id": "cust-a-001"
+          },
+          "occurred_at": 1773049600000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4002-a000-00000000000c",
+              "purpose": "debit_cash_bal"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-00000000000a",
+              "purpose": "credit_cash_bal"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca020",
+              "purpose": "debit_customer"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca003",
+              "purpose": "credit_customer"
+            }
+          ],
+          "amount": 7000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 7000000,
+            "credit_account_id": "50050000-0000-4002-a000-00000000000a",
+            "debit_account_id": "50050000-0000-4002-a000-00000000000c",
+            "leg_number": 1
+          },
+          {
+            "amount": 7000000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000ca003",
+            "debit_account_id": "50050000-0000-4002-a000-0000000ca020",
+            "leg_number": 2
+          }
+        ],
+        "name": "recon_cit_pbx_cust_a_70k_over_fdic",
+        "description": "Customer A $70,000 excess over $250k FDIC limit. DR CB PBX Suspense, CR CB PBX Clearing; DR Customer A Cash in Transit, CR Customer A Program Bank X."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5611
+          ],
+          "event_id": "01956110-0000-7611-8000-000000000002",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-cit-pbx-002",
+            "consumer_external_id": "cust-b-001"
+          },
+          "occurred_at": 1773049605000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4002-a000-00000000000a",
+              "purpose": "debit_cash_bal"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-00000000000c",
+              "purpose": "credit_cash_bal"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000cb003",
+              "purpose": "debit_customer"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000cb020",
+              "purpose": "credit_customer"
+            }
+          ],
+          "amount": 2000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2000000,
+            "credit_account_id": "50050000-0000-4002-a000-00000000000c",
+            "debit_account_id": "50050000-0000-4002-a000-00000000000a",
+            "leg_number": 1
+          },
+          {
+            "amount": 2000000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000cb020",
+            "debit_account_id": "50050000-0000-4002-a000-0000000cb003",
+            "leg_number": 2
+          }
+        ],
+        "name": "recon_cit_pbx_cust_b_20k_under_fdic",
+        "description": "Customer B $20,000 under $250k FDIC limit (reversed). DR CB PBX Clearing, CR CB PBX Suspense; DR Customer B Program Bank X, CR Customer B Cash in Transit."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c2f-e790-70e4-b26a-08fcbc889fdf",
+    "state": "DRAFT",
+    "revision": 8,
+    "transition_date": 1774294394768,
+    "content_hash": "sha256:4afbc84b1856f95183e6749d98cf7d55ef108214d04f037aeac5fc6e8a720948",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

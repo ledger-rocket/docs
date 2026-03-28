@@ -1,0 +1,188 @@
+# Common API Patterns
+
+Cross-cutting conventions that apply to all LedgerRocket services.
+
+## Authentication
+
+All requests require an API key in the `x-api-key` header:
+
+```bash
+curl -H "x-api-key: YOUR_API_KEY" \
+  https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/events
+```
+
+## Base URLs
+
+| Service | Base URL |
+|---------|----------|
+| Ledger Service | `https://ledger.dev.ledgerrocket.com/v2/ledger` |
+| Event Service | `https://ledger.dev.ledgerrocket.com/v2/event-service` |
+| Balance Service | `https://ledger.dev.ledgerrocket.com/v2/balances` |
+| Accounting Rule Engine | `https://ledger.dev.ledgerrocket.com/v2/accounting-rule-engine` |
+
+All services serve interactive API docs at `{base_url}/docs/` (Scalar UI) and the raw
+OpenAPI 3.1 spec at `{base_url}/openapi.json`.
+
+## Error Responses (RFC 9457)
+
+All HTTP errors follow [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457):
+
+```json
+{
+  "type": "https://ledger-rocket.dev/event-service/problems/validation/invalid-event",
+  "title": "Unprocessable Entity",
+  "status": 422,
+  "detail": "template_ids must contain at least one template ID",
+  "instance": "/api/v1/events"
+}
+```
+
+Content-Type is always `application/problem+json; charset=utf-8`.
+
+### Common Status Codes
+
+| Code | Meaning |
+|------|---------|
+| 200 | Success |
+| 400 | Bad Request — invalid query parameters or malformed JSON |
+| 404 | Not Found — resource does not exist |
+| 409 | Conflict — resource already exists or constraint violation |
+| 422 | Validation Error — request body fails validation |
+| 500 | Internal Server Error |
+| 503 | Service Unavailable — dependency down or startup in progress |
+
+## Site Scoping
+
+Most endpoints are scoped to a site. The `site_id` appears in the URL path:
+
+```text
+/api/v1/sites/{site_id}/accounts
+/api/v1/sites/{site_id}/templates
+/api/v1/sites/{site_id}/entities
+```
+
+For Event Service and Balance Service, the `site_id` is provided in the request body
+or inferred from the referenced accounts.
+
+## Pagination
+
+List endpoints support pagination via query parameters:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | integer | Maximum number of results to return (default varies by endpoint) |
+| `offset` | integer | Number of results to skip |
+
+Example:
+
+```bash
+curl -H "x-api-key: KEY" \
+  "https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts?limit=50&offset=100"
+```
+
+## Filtering
+
+List endpoints support rich filtering via query parameters. Common operators:
+
+| Operator | Syntax | Example |
+|----------|--------|---------|
+| Equals | `field=value` | `entity_scope=HOUSE` |
+| Not equals | `field__ne=value` | `entity_scope__ne=GROUP` |
+| In list | `field__in=a,b,c` | `account_type__in=ASSET,LIABILITY` |
+| Not in list | `field__nin=a,b,c` | `status__nin=DELETED,DEPRECATED` |
+
+### Account Filtering Example
+
+```bash
+# Get all HOUSE accounts with ASSET type on ledger 5001
+curl -H "x-api-key: KEY" \
+  "https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts?\
+entity_scope=HOUSE&account_type=ASSET&ledger_id=5001"
+```
+
+### Entity Filtering Example
+
+```bash
+# Filter entities by external IDs
+curl -X POST -H "x-api-key: KEY" -H "Content-Type: application/json" \
+  "https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/entities/filter" \
+  -d '{"entity_ids": ["019a...", "019b..."]}'
+```
+
+## Search
+
+Several list endpoints support case-insensitive search:
+
+| Resource | Searchable Fields |
+|----------|-------------------|
+| Accounts | account name, external identifier, UUID |
+| Entities | entity name, external ID |
+| Ledgers | ledger name, description |
+
+```bash
+# Search accounts by name
+curl -H "x-api-key: KEY" \
+  "https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts?search=consumer"
+```
+
+## Timestamps
+
+All timestamps are **Unix time in milliseconds** (integer). Never ISO-8601 strings.
+
+```json
+{
+  "created_at": 1774294364283,
+  "occurred_at": 1774294364283
+}
+```
+
+Balance Service uses **nanoseconds** for balance timestamps:
+
+```json
+{
+  "timestamp": 1704067200000000000
+}
+```
+
+## Money and Amounts
+
+All monetary amounts are **integer minor units** (e.g., cents for USD, satoshis for BTC):
+
+```json
+{
+  "amount": 150000
+}
+```
+
+This represents $1,500.00 for a USD account with scale 2.
+
+The currency scale defines the minor unit exponent: USD=2, JPY=0, BTC=8.
+
+## Identifiers
+
+| Field | Format | Example |
+|-------|--------|---------|
+| `event_id` | UUIDv7 (time-ordered) | `019a5000-0000-7000-8000-000000000001` |
+| `account_id` | UUID | `0192b4f0-7abc-7def-8000-000000000001` |
+| `site_id` | positive integer | `5` |
+| `template_id` | u16 (1-65535) | `533` |
+| `ledger_id` | u32 | `5001` |
+
+## Health Checks
+
+All services expose three standard endpoints:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | ALB target group health check |
+| `GET /livez` | Kubernetes liveness probe |
+| `GET /readyz` | Kubernetes readiness probe |
+
+## Interactive API Documentation
+
+Each service hosts interactive documentation powered by [Scalar](https://scalar.com/):
+
+- Ledger Service: `https://ledger.dev.ledgerrocket.com/v2/ledger/docs/`
+- Event Service: `https://ledger.dev.ledgerrocket.com/v2/event-service/docs/`
+- Balance Service: `https://ledger.dev.ledgerrocket.com/v2/balances/docs/`
+- Accounting Rule Engine: `https://ledger.dev.ledgerrocket.com/v2/accounting-rule-engine/docs/`

@@ -1,0 +1,238 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5615,
+    "name": "sweep_bank_statement_rail",
+    "description": "Intra-FBO inter-rail sweep: bank statement confirming cash movement on one rail within the Master FBO. Fired once per rail per sweep \u2014 source rail fires with DR control CR settled (cash leaving), dest rail fires with DR settled CR control (cash arriving). Bidirectional: caller controls direction by assigning accounts to debit/credit purposes. Leg 1 on economic ledger (10100/10102), Leg 2 mirrors on allocation ledger (11900/11902).",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on economic ledger: control staged against settled for one rail. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "economic_ledger"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on allocation ledger: CB control staged against CB settled for one rail. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "allocation_ledger"
+      }
+    ],
+    "category": "SWEEP",
+    "product": "FDIC_SWEEP",
+    "event_type": "TRANSFER",
+    "trigger": "Bank statement received confirming one side of an intra-FBO inter-rail transfer.",
+    "ledger_scope_descriptions": {
+      "allocation_ledger": "Allocation ledger (ID 5002) where FDIC cash balance position is updated for one FBO rail instance.",
+      "economic_ledger": "Economic ledger (ID 5001) where cash position is updated for one FBO rail instance."
+    },
+    "accounting_treatments": [
+      {
+        "type": "cash_movement",
+        "policy_refs": [
+          {
+            "id": "ASC_230",
+            "version": 1
+          }
+        ],
+        "description": "Record bank statement entry for one side of an intra-rail cash movement."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "FBO Settled or Control asset; debited side of economic reclassification.",
+        "mask": "10100|10102",
+        "purpose": "debit_economic"
+      },
+      {
+        "description": "FBO Settled or Control asset; credited side of economic reclassification.",
+        "mask": "10100|10102",
+        "purpose": "credit_economic"
+      },
+      {
+        "description": "CB Settled or Control asset; debited side of allocation reclassification.",
+        "mask": "11900|11902",
+        "purpose": "debit_allocation"
+      },
+      {
+        "description": "CB Settled or Control asset; credited side of allocation reclassification.",
+        "mask": "11900|11902",
+        "purpose": "credit_allocation"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "statement_id": {
+          "type": "string",
+          "description": "Bank statement identifier.",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "statement_line_ref": {
+          "minLength": 1,
+          "type": "string",
+          "description": "Statement line reference.",
+          "maxLength": 100
+        }
+      },
+      "required": [
+        "statement_id",
+        "statement_line_ref"
+      ],
+      "type": "object"
+    },
+    "validations": [
+      {
+        "description": "Economic debit and credit accounts must use different account codes (one settled, one control).",
+        "expression": "accounts.debit_economic.account_code.code != accounts.credit_economic.account_code.code",
+        "name": "distinct_economic_codes"
+      },
+      {
+        "description": "Allocation debit and credit accounts must use different account codes (one settled, one control).",
+        "expression": "accounts.debit_allocation.account_code.code != accounts.credit_allocation.account_code.code",
+        "name": "distinct_allocation_codes"
+      }
+    ],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.credit_economic.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.debit_economic.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Bank statement entry on economic ledger: control vs settled for one rail.",
+        "leg_number": 1,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "cash_movement"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.credit_allocation.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.debit_allocation.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror on allocation ledger: CB control vs CB settled for one rail.",
+        "leg_number": 2,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "cash_movement"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5615
+          ],
+          "event_id": "01960000-0000-7615-8000-000000000001",
+          "event_source": "bank-statement-feed",
+          "extra_metadata": {
+            "statement_id": "FBO-STMT-INTRA-WP-2026-03-15",
+            "statement_line_ref": "INTRA-RAIL-WP-001"
+          },
+          "occurred_at": 1773222400000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-00000000f013",
+              "purpose": "debit_economic"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-00000000f002",
+              "purpose": "credit_economic"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-00000000f009",
+              "purpose": "debit_allocation"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-00000000f005",
+              "purpose": "credit_allocation"
+            }
+          ],
+          "amount": 2500000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4001-a000-00000000f002",
+            "debit_account_id": "50050000-0000-4001-a000-00000000f013",
+            "leg_number": 1
+          },
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4002-a000-00000000f005",
+            "debit_account_id": "50050000-0000-4002-a000-00000000f009",
+            "leg_number": 2
+          }
+        ],
+        "name": "intra_rail_bank_stmt_source_worldpay_25k",
+        "description": "Source rail (Worldpay) bank statement: cash leaving. DR Control (10102), CR Settled (10100). DR CB Control (11902), CR CB Settled (11900)."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5615
+          ],
+          "event_id": "01960000-0000-7615-8000-000000000002",
+          "event_source": "bank-statement-feed",
+          "extra_metadata": {
+            "statement_id": "FBO-STMT-INTRA-ST-2026-03-15",
+            "statement_line_ref": "INTRA-RAIL-ST-001"
+          },
+          "occurred_at": 1773222500000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000010101",
+              "purpose": "debit_economic"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "credit_economic"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011900",
+              "purpose": "debit_allocation"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "credit_allocation"
+            }
+          ],
+          "amount": 2500000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000003",
+            "debit_account_id": "50050000-0000-4001-a000-000000010101",
+            "leg_number": 1
+          },
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011902",
+            "debit_account_id": "50050000-0000-4002-a000-000000011900",
+            "leg_number": 2
+          }
+        ],
+        "name": "intra_rail_bank_stmt_dest_stripe_25k",
+        "description": "Dest rail (Stripe) bank statement: cash arriving. DR Settled (10100), CR Control (10102). DR CB Settled (11900), CR CB Control (11902)."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d0c4f-eede-7122-917c-59b7f3eb5bb7",
+    "state": "DRAFT",
+    "revision": 4,
+    "transition_date": 1774028058334,
+    "content_hash": "sha256:3073780d7f4a669b3aedd30baf80c892b7b85cf0743c3e5547863162d0bfe919",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

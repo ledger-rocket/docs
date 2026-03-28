@@ -1,0 +1,155 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5404,
+    "name": "suspense_resolve_erroneous_debit",
+    "description": "Reclassify an aged orphaned Suspense balance identified as a bank error by moving the amount from Suspense to Clearing (debit Clearing, credit Suspense), representing cash expected to arrive once the bank posts the correcting entry.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Pure asset-to-asset reclassification: Clearing increases and Suspense decreases by the same correction amount. Net impact on total assets is zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "economic_ledger"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "ADJUSTMENT",
+    "trigger": "Investigation determines an orphaned Suspense balance represents a bank erroneous debit and must be reclassified to Clearing pending the bank's correction.",
+    "ledger_scope_descriptions": {
+      "economic_ledger": "Economic Ledger (5001) \u2014 Clearing and Suspense reconciliation control account scope for erroneous debit reclassification."
+    },
+    "accounting_treatments": [
+      {
+        "type": "adjustment_manual",
+        "policy_refs": [
+          {
+            "id": "ASC_250",
+            "version": 1
+          },
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Manual reclassification within reconciliation control accounts to reflect expected correction from the bank (move balance from Suspense to Clearing) without creating a separate receivable."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Clearing asset account to be debited for the reclassification (Master FBO - Clearing).",
+        "mask": "10101",
+        "purpose": "clearing_account"
+      },
+      {
+        "description": "Suspense / reconciliation mixing bowl asset control account to be credited for the reclassification (Master FBO - Suspense).",
+        "mask": "10103",
+        "purpose": "suspense_account"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "bank_dispute_reference": {
+          "maxLength": 100,
+          "description": "Bank's dispute/reference number for the erroneous debit case (e.g. 'BDR-2026-000123').",
+          "type": "string",
+          "minLength": 1
+        },
+        "investigation_reference": {
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Internal investigation ticket/reference (e.g. 'INV-45678').",
+          "type": "string"
+        },
+        "approver": {
+          "maxLength": 100,
+          "description": "Name or ID of the approver who authorised this reclassification (e.g. 'j.smith' or 'APPROVER_123').",
+          "type": "string",
+          "minLength": 1
+        },
+        "anomaly_type": {
+          "type": "string",
+          "enum": [
+            "ERRONEOUS_DEBIT"
+          ],
+          "description": "Anomaly classification for this resolution event (must be 'ERRONEOUS_DEBIT')."
+        }
+      },
+      "required": [
+        "anomaly_type",
+        "bank_dispute_reference",
+        "investigation_reference",
+        "approver"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.suspense_account.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.clearing_account.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Reclassify an orphaned suspense balance to clearing, pending the bank's correction of the erroneous debit.",
+        "leg_number": 1,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "adjustment_manual"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5404
+          ],
+          "event_id": "018ddc5a-2b6b-7c2e-8f4a-25fddbb1a1b1",
+          "event_source": "api",
+          "extra_metadata": {
+            "anomaly_type": "ERRONEOUS_DEBIT",
+            "bank_dispute_reference": "BDR-2026-000042",
+            "investigation_reference": "INV-2026-00891",
+            "approver": "j.smith"
+          },
+          "occurred_at": 1771804800000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000002",
+              "purpose": "clearing_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "suspense_account"
+            }
+          ],
+          "amount": 125000
+        },
+        "expected_transfers": [
+          {
+            "amount": 125000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000004",
+            "debit_account_id": "50050000-0000-4001-a000-000000000002",
+            "leg_number": 1
+          }
+        ],
+        "name": "erroneous_debit_reclassification_1250",
+        "description": "Erroneous Debit Reclassification \u2014 $1,250.00. Bank erroneously debited the FBO master account twice for the same ACH batch. Investigation confirmed duplicate posting. $1,250.00 reclassified from Suspense to Clearing pending bank correction."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019cb055-6f27-78cd-919f-eb01dafeee41",
+    "state": "DRAFT",
+    "revision": 4,
+    "transition_date": 1772484914983,
+    "content_hash": "sha256:38a50e9a1549a9ee09d7d6be5ab13e69675df6e639cde03334428ae849fba425",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

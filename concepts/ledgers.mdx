@@ -21,7 +21,7 @@ Every transfer debits one account and credits another. Both accounts must belong
 
 1. **Currency consistency**: Both sides of a transfer are in the same currency. There is no implicit currency conversion.
 2. **Entity ownership clarity**: The transfer stays within a single entity's books.
-3. **Atomicity**: TigerBeetle enforces same-ledger transfers at the storage layer.
+3. **Atomicity**: Same-ledger transfers are enforced at the storage layer.
 
 To move value between currencies or entities, you create separate transfers on each ledger -- for example, a payment leg on a USD ledger and a receipt leg on a EUR ledger, linked by the same `event_id`.
 

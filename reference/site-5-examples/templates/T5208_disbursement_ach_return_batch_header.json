@@ -1,0 +1,132 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5208,
+    "name": "disbursement_ach_return_batch_header",
+    "description": "Establish the per-file clearing balance for an ACH return file. The aggregate return amount moves from Clearing Total (10101) to the per-file ACH Clearing Files (10104) instance. Per-customer return detail lines (T5207) then draw this down to zero. This is the mirror of T5203 (disbursement batch header) with reversed DR/CR direction.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: Clearing Total (10101) debit balance increases and per-file ACH Clearing Files (10104) credit balance increases equally. Total economic ledger assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      }
+    ],
+    "category": "DISBURSEMENTS",
+    "product": "DISBURSEMENTS",
+    "event_type": "TRANSFER",
+    "trigger": "ACH return file received, batch header. Fires once per return file before per-customer return detail lines (T5207).",
+    "ledger_scope_descriptions": {
+      "operational": "Operational ledger (ID 5001) where the return batch header establishes the per-file clearing balance under ACH Clearing Files (10104)."
+    },
+    "accounting_treatments": [
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Establish the per-file return clearing balance by transferring from Clearing Total to a per-file ACH Clearing Files instance; no P&L impact."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Permanent accumulator account (Master FBO - Clearing Total) on the economic ledger; debited to transfer the return file total to the per-file instance.",
+        "mask": "10101",
+        "purpose": "clearing_total"
+      },
+      {
+        "description": "Per-file clearing instance (Master FBO - ACH Clearing Files) on the economic ledger; credited with the return file total, then drawn down to zero by per-customer return detail events (T5207).",
+        "mask": "10104",
+        "purpose": "clearing_per_file"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "ach_file_id": {
+          "description": "ACH return file reference used to create/select the per-file ACH Clearing Files (10104) instance.",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expected_entry_count": {
+          "description": "Number of return entries expected in this file, for monitoring.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ach_file_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.clearing_per_file.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.clearing_total.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Transfer the return file total from Clearing Total to the per-file ACH Clearing Files instance; return detail lines draw this down to zero.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5208
+          ],
+          "event_id": "01952080-0000-7208-8000-000000000001",
+          "event_source": "payment-gateway",
+          "extra_metadata": {
+            "ach_file_id": "ach-return-2026-03-02-001",
+            "expected_entry_count": 1
+          },
+          "occurred_at": 1772617590000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000101001",
+              "purpose": "clearing_total"
+            },
+            {
+              "account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+              "purpose": "clearing_per_file"
+            }
+          ],
+          "amount": 20000
+        },
+        "expected_transfers": [
+          {
+            "amount": 20000,
+            "credit_account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+            "debit_account_id": "50050000-0000-4001-a000-000000101001",
+            "leg_number": 1
+          }
+        ],
+        "name": "return_batch_header_200",
+        "description": "Batch header for a $200.00 ACH return file (ach-return-2026-03-02-001) with 1 expected return entry (Customer A $200)."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d21ba-add9-76ec-ac19-a96ed6862fa1",
+    "state": "DRAFT",
+    "revision": 3,
+    "transition_date": 1774387375577,
+    "content_hash": "sha256:dcc7e53b02c7d54022abef1c0f347187def488855a640094bf4647ac870e8776",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

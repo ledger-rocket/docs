@@ -1,0 +1,155 @@
+# Template Lifecycle
+
+Templates follow a maker-checker workflow to ensure that all accounting configurations are reviewed and approved before they can process live financial events. This lifecycle is managed by the Accounting Rule Engine (ARE).
+
+## States
+
+| State | Description |
+|-------|-------------|
+| `DRAFT` | Initial state. Template can be edited freely. Not executable. |
+| `PENDING_APPROVAL` | Submitted for review. No further edits until approved, rejected, or withdrawn. |
+| `LIVE` | Approved and active. The template processes incoming events. Executable. |
+| `DEPRECATED` | Retired from active use. No longer processes new events but remains in the audit trail. |
+| `REJECTED` | Submission was rejected by a reviewer. Returns to editable state for corrections. |
+| `DELETED` | Soft-deleted. Can be undeleted. Not visible in normal listings. |
+
+## State Transitions
+
+```text
+                    +---> REJECTED
+                    |       |
+                    |       | (edit and resubmit)
+                    |       v
+DRAFT ---submit---> PENDING_APPROVAL ---approve---> LIVE ---deprecate---> DEPRECATED
+  ^                   |                              |
+  |                   | withdraw                     | delete
+  |                   v                              v
+  +-------------------+                           DELETED
+                                                    |
+                                                    | undelete
+                                                    v
+                                                   DRAFT
+```
+
+### Transition Actions
+
+| Action | From State | To State | Description |
+|--------|-----------|----------|-------------|
+| `submit` | DRAFT | PENDING_APPROVAL | Submit template for review. |
+| `approve` | PENDING_APPROVAL | LIVE | Reviewer approves the template. |
+| `reject` | PENDING_APPROVAL | REJECTED | Reviewer rejects with feedback. |
+| `withdraw` | PENDING_APPROVAL | DRAFT | Author withdraws submission for further editing. |
+| `deprecate` | LIVE | DEPRECATED | Retire template from active use. |
+| `delete` | DRAFT, LIVE | DELETED | Soft-delete the template. |
+| `undelete` | DELETED | DRAFT | Restore a deleted template. |
+| `rollback` | LIVE | DRAFT | Roll back a live template (creates new revision). |
+
+## Audit Slugs
+
+Every state transition creates an audit slug -- an immutable record of who did what, when, and the exact content at that point. The audit slug contains:
+
+| Field | Description |
+|-------|-------------|
+| `slug_id` | Unique identifier for this audit record (UUIDv7). |
+| `state` | Current state after the transition. |
+| `revision` | Monotonically increasing revision number. |
+| `transition_date` | Unix timestamp in milliseconds when the transition occurred. |
+| `content_hash` | SHA-256 hash of the template content at this revision (`sha256:...`). |
+| `maker` | Identity of the person or system that performed the action. |
+| `is_executable` | Whether the template can process events in this state. Only `true` for `LIVE` templates. |
+
+Example audit slug:
+
+```json
+{
+    "slug_id": "019cb055-67e4-7ac1-b93a-aece8e755200",
+    "state": "DRAFT",
+    "revision": 3,
+    "transition_date": 1772484913124,
+    "content_hash": "sha256:a4042af7a68084553df639e3441107405a193557c1405cb8fca2e390c963b2f4",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+}
+```
+
+## Maker-Checker Workflow
+
+The maker-checker pattern requires two distinct actors:
+
+1. **Maker** -- creates or edits the template and submits it for approval.
+2. **Checker** -- reviews the template and either approves or rejects it.
+
+The maker and checker must be different identities. A maker cannot approve their own submission.
+
+### Typical Workflow
+
+1. Create template via `PUT /api/v1/sites/{site_id}/templates/{template_id}` (state: DRAFT)
+2. Iterate on template content (re-PUT to update, stays in DRAFT)
+3. Submit for approval via `POST .../templates/{template_id}/submit` (state: PENDING_APPROVAL)
+4. Reviewer approves via `POST .../templates/{template_id}/approve` (state: LIVE)
+5. Template begins processing events
+
+### If Rejected
+
+1. Reviewer rejects via `POST .../templates/{template_id}/reject` (state: REJECTED)
+2. Author edits the template content
+3. Author resubmits via `POST .../templates/{template_id}/submit`
+
+### If Changes Needed Before Review
+
+1. Author withdraws via `POST .../templates/{template_id}/withdraw` (state: DRAFT)
+2. Author edits and resubmits
+
+## API Endpoints
+
+All lifecycle endpoints are under the Accounting Rule Engine service.
+
+### Template CRUD
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/sites/{site_id}/templates` | List all templates for a site |
+| GET | `/api/v1/sites/{site_id}/templates/{template_id}` | Get a specific template |
+| PUT | `/api/v1/sites/{site_id}/templates/{template_id}` | Create or update template (DRAFT only) |
+
+### Lifecycle Transitions
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `.../templates/{template_id}/submit` | Submit for approval |
+| POST | `.../templates/{template_id}/approve` | Approve template |
+| POST | `.../templates/{template_id}/reject` | Reject template |
+| POST | `.../templates/{template_id}/withdraw` | Withdraw submission |
+| POST | `.../templates/{template_id}/deprecate` | Deprecate live template |
+| POST | `.../templates/{template_id}/delete` | Soft-delete template |
+| POST | `.../templates/{template_id}/undelete` | Restore deleted template |
+
+### Audit Trail
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `.../templates/{template_id}/audit-slugs` | Get full audit history |
+
+### Cache Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/sites/{site_id}/templates:refresh-cache` | Reload templates from storage |
+| GET | `/api/v1/sites/{site_id}/templates:status` | Template loader status |
+
+## Content Hashing
+
+Each revision stores a `content_hash` -- a SHA-256 digest of the template content. This enables:
+
+- **Tamper detection**: verify that template content has not been modified outside the lifecycle.
+- **Diff comparison**: compare content hashes across revisions to identify which revisions changed content.
+- **Deduplication**: skip processing if content has not changed between revisions.
+
+## Risk Assessment
+
+Templates should include risk metadata in their descriptions and accounting treatments. Key factors:
+
+- **Financial impact**: does this template move customer funds, internal accounts, or both?
+- **Manual vs. automated**: is this template triggered by human approval or automated systems?
+- **Reversibility**: can the accounting effect be reversed by another template?
+- **Regulatory scope**: which accounting standards (ASC, IFRS) govern this template's behavior?

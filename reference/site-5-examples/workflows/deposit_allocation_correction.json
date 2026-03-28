@@ -1,0 +1,46 @@
+{
+  "workflow": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/v1.1.0/workflow.schema.json",
+    "workflow_id": "019c903c-cd8b-7953-9ed7-f7f5a296152d",
+    "code": "deposit-allocation-correction",
+    "site_id": 5,
+    "name": "Deposit Allocation Correction",
+    "description": "# UC5: Deposit Allocation Correction\n\nCorrects an incorrect deposit allocation by reversing the original posting and re-allocating to the correct consumer. Triggered when an analyst identifies a misrouted deposit during reconciliation or investigation.\n\n## Steps\n\n1. **Reverse Incorrect Allocation** (T5501) -- DR Hold (20101), CR per-file Clearing (10101); reverse the allocation ledger mirror. Precondition: consumer must still have funds on Hold.\n2. **Re-allocate Correctly** (T5101) -- Post the correct consumer's share using the standard allocation template. DR Clearing, CR Hold for the right consumer.\n\n**Final state:** The incorrect consumer's Hold and allocation positions are reversed. The correct consumer now holds the deposit.",
+    "require_shared_ledgers": true,
+    "steps": [
+      {
+        "id": "reverse_incorrect_allocation",
+        "template_id": 5501,
+        "event_sources": [
+          "ops-portal"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Reverse the incorrect allocation: debit Customer Hold (20101) and credit per-file Clearing (10101) on the economic ledger; debit Consumer FBO Clearing (21101) and credit Cash Balances \u2013 Clearing (11901) on the allocation ledger. Precondition: debits on 20101 must not exceed credits (consumer must still have funds on hold).",
+        "trigger": "analyst_approves_allocation_reversal"
+      },
+      {
+        "id": "reallocate_correctly",
+        "template_id": 5101,
+        "event_sources": [
+          "allocation-file-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Re-allocate to the correct consumer: debit per-file Clearing (10101) and credit Customer Hold (20101) on the economic ledger; debit Cash Balances \u2013 Clearing (11901) and credit Customer Master FBO Clearing (21101) on the allocation ledger.",
+        "trigger": "correct_destination_determined",
+        "condition": "reversal_reason_requires_reallocation",
+        "condition_description": "Fires when the reversal was for a misallocation (wrong consumer, wrong amount) rather than a duplicate. The correct destination must be determined before this step fires."
+      }
+    ]
+  },
+  "status": "DELETED"
+}

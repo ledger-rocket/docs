@@ -1,0 +1,171 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5610,
+    "name": "sweep_recon_bank_payment_pbx",
+    "description": "UC6 Step 10: Reconciliation event (bank payment) for Program Bank X side. Zero out control accounts at aggregate level. Debit Program Bank X Control (10202) and credit Program Bank X Suspense (10203) on the economic ledger. Debit Cash Balances PBX Control (11902) and credit Cash Balances PBX Suspense (11903) on the allocation ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: PBX Control debited, PBX Suspense credited. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: CB PBX Control debited, CB PBX Suspense credited. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation event (bank payment) -- matching engine pairs PBX control against clearing.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where CB PBX control absorbs CB PBX suspense for tracking.",
+      "operational": "Operational ledger (ID 5001) where PBX control absorbs suspense for bank payment."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Match PBX control against suspense to complete bank payment reconciliation."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Program Bank X Control asset; debited to zero control position.",
+        "mask": "10202",
+        "purpose": "pbx_control"
+      },
+      {
+        "description": "Program Bank X Suspense asset; credited to absorb control.",
+        "mask": "10203",
+        "purpose": "pbx_suspense"
+      },
+      {
+        "description": "Cash Balances PBX Control asset; debited to zero allocation control.",
+        "mask": "11902",
+        "purpose": "cb_pbx_control"
+      },
+      {
+        "description": "Cash Balances PBX Suspense asset; credited to absorb allocation control.",
+        "mask": "11903",
+        "purpose": "cb_pbx_suspense"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "recon_id": {
+          "description": "Reconciliation event identifier.",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "recon_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.pbx_suspense.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.pbx_control.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Zero PBX control against suspense to complete the reconciliation cycle.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cb_pbx_suspense.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.cb_pbx_control.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the PBX bank payment reconciliation on the allocation ledger.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5610
+          ],
+          "event_id": "01956100-0000-7610-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-bp-pbx-001"
+          },
+          "occurred_at": 1772963200000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000007",
+              "purpose": "pbx_control"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000008",
+              "purpose": "pbx_suspense"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-00000000000b",
+              "purpose": "cb_pbx_control"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-00000000000c",
+              "purpose": "cb_pbx_suspense"
+            }
+          ],
+          "amount": 5000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000008",
+            "debit_account_id": "50050000-0000-4001-a000-000000000007",
+            "leg_number": 1
+          },
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050000-0000-4002-a000-00000000000c",
+            "debit_account_id": "50050000-0000-4002-a000-00000000000b",
+            "leg_number": 2
+          }
+        ],
+        "name": "recon_bank_payment_pbx_50k_fdic",
+        "description": "Match $50,000 PBX control against suspense after FDIC sweep bank statement."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c2f-707b-70b1-9116-386dc7882333",
+    "state": "DRAFT",
+    "revision": 8,
+    "transition_date": 1774294364283,
+    "content_hash": "sha256:abd8a579d16ed80582355e7a6fb220d2016a80d71da9d792cd8dc6483fc72597",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

@@ -1,0 +1,72 @@
+# Entities
+
+## What Is an Entity?
+
+An **entity** is a real-world actor in the system -- a person or organization that can own ledgers, hold accounts, and participate in financial transactions. Every entity belongs to a single site.
+
+## Entity Types
+
+| Type | Description |
+|------|-------------|
+| `INDIVIDUAL` | A natural person (customer, employee, beneficiary) |
+| `COMPANY` | A legal organization (corporation, fund, trust, partnership) |
+
+Company entities may also have an `institution_type` that classifies the business (e.g., bank, payment processor) for ledger-owning entities.
+
+## Beneficial Owner vs Custodian
+
+An entity can serve two distinct roles on an account:
+
+- **Beneficial owner** (`entity_id` on an account) -- the party who economically owns the funds. This is "whose money is it?"
+- **Custodian** (`custodian_entity_id` on an account) -- the party who holds or safeguards the funds on behalf of the owner. This is "who is responsible for the money?"
+
+A single entity can be both owner and custodian of the same account. When these roles differ, the account represents funds held by one party on behalf of another.
+
+## Nostro/Vostro Account Patterns
+
+The beneficial owner / custodian distinction enables nostro/vostro pairs:
+
+- **Nostro** ("our account at your bank"): Your company is the beneficial owner; the counterparty is the custodian.
+- **Vostro** ("your account at our bank"): The counterparty is the beneficial owner; your company is the custodian.
+
+These paired accounts are linked via the `linked_account_id` field on each account, creating a bidirectional relationship for correspondent banking and intercompany flows.
+
+## KYC Status Tracking
+
+Each entity tracks its Know Your Customer verification status:
+
+| Status | Meaning |
+|--------|---------|
+| `PENDING` | KYC not yet started (default) |
+| `APPROVED` | KYC checks passed |
+| `REJECTED` | KYC checks failed |
+
+## Creating an Entity
+
+```bash
+curl -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/entities \
+  -H "x-api-key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "records": [
+      {
+        "entity_id": "123e4567-e89b-12d3-a456-426614174000",
+        "entity_type": "COMPANY",
+        "name": "Acme Corp",
+        "country_code": "GB",
+        "site_id": 1,
+        "kyc_status": "APPROVED"
+      }
+    ]
+  }'
+```
+
+## How Entities Relate to Ledgers and Accounts
+
+The relationship hierarchy is: **Entity -> Ledger -> Account**.
+
+- An entity can own multiple ledgers (one per currency).
+- A ledger belongs to exactly one entity and one currency.
+- An account belongs to a ledger, has a beneficial owner entity, and has a custodian entity.
+
+This structure means that a single company operating in USD and EUR will have two ledgers, each containing its own set of accounts denominated in that currency.

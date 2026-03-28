@@ -1,0 +1,107 @@
+{
+  "workflow": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/v1.1.0/workflow.schema.json",
+    "workflow_id": "019cb632-835e-7b7b-a257-72172088b6d1",
+    "code": "deposit-allocation-v3",
+    "site_id": 5,
+    "name": "Deposit Allocation (Accountant-Approved Model)",
+    "description": "Processes deposit allocation files through three phases: automated loading, automated consumer matching, and human-triggered release.\n\n**Phase 1 -- File Loading (automated)**\nThe allocation-file-service ingests the file header (T5105) to establish the per-file allocation clearing balance, then loads each detail line (T5106) into staging. Deposit liability is recognized at ingestion time via the Unallocated Customer account (20900), even before consumer references are resolved.\n\n**Phase 2 -- Consumer Matching (automated)**\nThe reconciliation service (T5107) resolves each raw consumer reference to a real account ID and reclassifies the liability from Unallocated Customer (20900) to Consumer Hold (20101). Funds go to Hold (not Available) because matching can run before the bank statement confirms the cash.\n\n**Phase 3 -- Human Release (manual)**\nAn operator reviews the reconciliation state -- file fully loaded, consumers matched, bank statement confirmed -- then triggers T5402 per consumer to move funds from Hold to Available.\n\nThe bank statement (T5401) and allocation file can arrive in any order. Control flush (T5407) fires once both are paired. The per-file Unallocated Customer account (20900) gives visibility into deposits not yet matched to consumers.",
+    "require_shared_ledgers": false,
+    "steps": [
+      {
+        "id": "bank_statement_line",
+        "template_id": 5401,
+        "event_sources": [
+          "bank_statement_feed"
+        ],
+        "examples": [
+          2
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Record inbound bank cash and control position per statement line.",
+        "trigger": "bank_statement_feed_inbound_line"
+      },
+      {
+        "id": "alloc_file_header",
+        "template_id": 5105,
+        "event_sources": [
+          "allocation_file_service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Establish per-file allocation clearing balance from the file total. Allocation Clearing per-file (10104) credit balance zeroes when all detail lines load.",
+        "trigger": "allocation_file_service_header"
+      },
+      {
+        "id": "alloc_file_detail",
+        "template_id": 5106,
+        "event_sources": [
+          "allocation_file_service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Load a detail line, recognizing the deposit liability immediately in Unallocated Customer (20900) and recording the FDIC position in Unallocated Customer FBO (21900). Fires per line item.",
+        "trigger": "allocation_file_service_detail_line"
+      },
+      {
+        "id": "consumer_match",
+        "template_id": 5107,
+        "event_sources": [
+          "reconciliation_service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Reclassify the deposit from aggregate unallocated to a specific consumer's hold account. Liability-to-liability movement; total obligations unchanged. Fires per matched consumer.",
+        "trigger": "reconciliation_service_consumer_match"
+      },
+      {
+        "id": "control_flush",
+        "template_id": 5407,
+        "event_sources": [
+          "reconciliation_service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Flush per-file Control balance to Suspense once the bank statement is fully ingested and paired with the allocation file.",
+        "trigger": "reconciliation_service_bank_statement_paired"
+      },
+      {
+        "id": "consumer_release",
+        "template_id": 5402,
+        "event_sources": [
+          "ops_portal"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Human-triggered release after reviewing reconciliation state. Clears Suspense against Clearing Total and moves consumer funds from Hold to Available. Fires per consumer.",
+        "trigger": "ops_portal_human_release"
+      }
+    ]
+  },
+  "status": "DELETED"
+}

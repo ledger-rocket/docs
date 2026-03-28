@@ -1,0 +1,307 @@
+{
+  "template": {
+    "$schema": "",
+    "site_id": 5,
+    "template_id": 5211,
+    "name": "recon_returns_clearing_release",
+    "description": "Flush the return clearing balance through Suspense AND release customer funds from Hold to Available. Leg 1 moves Suspense (10103) to Clearing Total (10101) on the economic ledger (reverse direction from T5210 because returns flow opposite). Leg 2 releases Customer Hold (20101) to Customer Available (20100). Legs 3 and 4 mirror on the allocation ledger. Structurally identical to UC1's T5402 but for disbursement returns.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on the economic ledger: Suspense (10103) decreases and Clearing Total (10101) decreases. Total assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability-to-liability reclassification on the economic ledger: Customer Hold (20101) decreases and Customer Available (20100) increases. Total liabilities unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on the allocation ledger: Cash Balances - Suspense (11903) decreases and Cash Balances - Clearing (11901) decreases. Total assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability-to-liability reclassification on the allocation ledger: Customer - Master FBO Clearing (21101) decreases and Customer - Master FBO (21100) increases. Total liabilities unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation service matches a return clearing entry against the bank statement. Fires once per return line reconciled.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where the clearing flush and customer release are mirrored for FDIC tracking.",
+      "operational": "Operational ledger (ID 5001) where return clearing is flushed through Suspense and customer funds are released from Hold to Available."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "IAS_1",
+            "version": 1
+          },
+          {
+            "id": "IFRS_9",
+            "version": 1
+          }
+        ],
+        "description": "Flush the return clearing balance from Suspense back to Clearing Total."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "IAS_1",
+            "version": 1
+          }
+        ],
+        "description": "Release customer funds from Hold to Available on the economic ledger."
+      },
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "IAS_1",
+            "version": 1
+          },
+          {
+            "id": "IFRS_9",
+            "version": 1
+          }
+        ],
+        "description": "Mirror the clearing flush on the allocation ledger for FDIC tracking."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "IAS_1",
+            "version": 1
+          }
+        ],
+        "description": "Release customer FDIC position from FBO Clearing to FBO Main on the allocation ledger."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Master FBO - Suspense on the economic ledger; debited to flush the return clearing balance.",
+        "mask": "10103",
+        "purpose": "suspense"
+      },
+      {
+        "description": "Master FBO - Clearing Total on the economic ledger; credited to receive the return clearing flush.",
+        "mask": "10101",
+        "purpose": "clearing_total"
+      },
+      {
+        "description": "Customer - Hold on the economic ledger; debited to release funds.",
+        "mask": "20101",
+        "purpose": "consumer_hold"
+      },
+      {
+        "description": "Customer - Available on the economic ledger; credited to make funds available.",
+        "mask": "20100",
+        "purpose": "consumer_available"
+      },
+      {
+        "description": "Cash Balances - Master FBO Suspense on the allocation ledger; debited to mirror the clearing flush.",
+        "mask": "11903",
+        "purpose": "cash_balances_suspense"
+      },
+      {
+        "description": "Cash Balances - Master FBO Clearing on the allocation ledger; credited to mirror the clearing flush.",
+        "mask": "11901",
+        "purpose": "cash_balances_clearing"
+      },
+      {
+        "description": "Customer - Master FBO Clearing on the allocation ledger; debited to release the FDIC position.",
+        "mask": "21101",
+        "purpose": "consumer_fbo_hold"
+      },
+      {
+        "description": "Customer - Master FBO on the allocation ledger; credited to establish the customer's FDIC position.",
+        "mask": "21100",
+        "purpose": "consumer_fbo_main"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "consumer_external_id": {
+          "description": "Consumer whose return is being reconciled and released.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "ach_file_id": {
+          "maxLength": 100,
+          "description": "ACH return file being reconciled.",
+          "type": "string",
+          "minLength": 1
+        },
+        "statement_file_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Bank statement file for reconciliation pairing."
+        }
+      },
+      "required": [
+        "consumer_external_id",
+        "ach_file_id",
+        "statement_file_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.clearing_total.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.suspense.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Flush return clearing: debit Suspense, credit Clearing Total (reverse direction from T5210).",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_available.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.consumer_hold.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Release customer funds from Hold to Available.",
+        "leg_number": 2,
+        "ledger_scope": "operational",
+        "treatment_type": "internal_transfer"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cash_balances_clearing.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.cash_balances_suspense.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the clearing flush on the allocation ledger for FDIC tracking.",
+        "leg_number": 3,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_fbo_main.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.consumer_fbo_hold.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Release customer FDIC position from FBO Clearing to FBO Main.",
+        "leg_number": 4,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5211
+          ],
+          "event_id": "01952110-0000-7211-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "consumer_external_id": "cust-a-001",
+            "ach_file_id": "ach-return-2026-03-02-001",
+            "statement_file_id": "FBO-STMT-2026-03-03"
+          },
+          "occurred_at": 1772704200000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "suspense"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000101001",
+              "purpose": "clearing_total"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca002",
+              "purpose": "consumer_hold"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca001",
+              "purpose": "consumer_available"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011903",
+              "purpose": "cash_balances_suspense"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "cash_balances_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca002",
+              "purpose": "consumer_fbo_hold"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca001",
+              "purpose": "consumer_fbo_main"
+            }
+          ],
+          "amount": 20000
+        },
+        "expected_transfers": [
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4001-a000-000000101001",
+            "debit_account_id": "50050000-0000-4001-a000-000000000004",
+            "leg_number": 1
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000ca001",
+            "debit_account_id": "50050000-0000-4001-a000-0000000ca002",
+            "leg_number": 2
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011901",
+            "debit_account_id": "50050000-0000-4002-a000-000000011903",
+            "leg_number": 3
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000ca001",
+            "debit_account_id": "50050000-0000-4002-a000-0000000ca002",
+            "leg_number": 4
+          }
+        ],
+        "name": "recon_return_release_cust_a_200",
+        "description": "Reconcile Customer A's $200.00 return: flush Suspense to Clearing Total, release Hold to Available, with allocation ledger mirrors."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c2b-d5c2-764b-a259-daec5454e069",
+    "state": "DRAFT",
+    "revision": 3,
+    "transition_date": 1774294128066,
+    "content_hash": "sha256:4cba18976f304bf7f6eb36e22321b9b3d43ddc378b3b8107b74e425cba31d39e",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

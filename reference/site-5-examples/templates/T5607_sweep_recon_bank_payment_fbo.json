@@ -1,0 +1,171 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5607,
+    "name": "sweep_recon_bank_payment_fbo",
+    "description": "UC6 Step 7: Reconciliation event (bank payment) for Master FBO side. Zero out control accounts at aggregate level. Debit Master FBO Suspense (10103) and credit Master FBO Control (10102) on the economic ledger. Debit Cash Balances Master FBO Suspense (11903) and credit Cash Balances Master FBO Control (11902) on the allocation ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: Suspense debited, Control credited. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: CB Suspense debited, CB Control credited. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation event (bank payment) -- matching engine pairs control against clearing.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "operational": "Operational ledger (ID 5001) where suspense absorbs control for FBO bank payment.",
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where CB suspense absorbs CB control for FBO tracking."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Match control against suspense to complete FBO bank payment reconciliation."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Master FBO Suspense asset; debited to absorb control.",
+        "mask": "10103",
+        "purpose": "fbo_suspense"
+      },
+      {
+        "description": "Master FBO Control asset; credited to zero control position.",
+        "mask": "10102",
+        "purpose": "fbo_control"
+      },
+      {
+        "description": "Cash Balances Master FBO Suspense asset; debited to absorb allocation control.",
+        "mask": "11903",
+        "purpose": "cb_fbo_suspense"
+      },
+      {
+        "description": "Cash Balances Master FBO Control asset; credited to zero allocation control.",
+        "mask": "11902",
+        "purpose": "cb_fbo_control"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "recon_id": {
+          "type": "string",
+          "description": "Reconciliation event identifier.",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "required": [
+        "recon_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.fbo_control.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.fbo_suspense.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Zero Master FBO suspense against control to complete the reconciliation cycle.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cb_fbo_control.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.cb_fbo_suspense.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the Master FBO bank payment reconciliation on the allocation ledger.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5607
+          ],
+          "event_id": "01956070-0000-7607-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-bp-fbo-001"
+          },
+          "occurred_at": 1772790400000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "fbo_suspense"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "fbo_control"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011903",
+              "purpose": "cb_fbo_suspense"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "cb_fbo_control"
+            }
+          ],
+          "amount": 5000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000003",
+            "debit_account_id": "50050000-0000-4001-a000-000000000004",
+            "leg_number": 1
+          },
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011902",
+            "debit_account_id": "50050000-0000-4002-a000-000000011903",
+            "leg_number": 2
+          }
+        ],
+        "name": "recon_bank_payment_fbo_50k_fdic",
+        "description": "Match $50,000 FBO control against suspense after FDIC sweep bank statement."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c2e-27fb-721f-96a8-9b1361c3690e",
+    "state": "DRAFT",
+    "revision": 9,
+    "transition_date": 1774294280187,
+    "content_hash": "sha256:e39dc0299e37ff057c7b2ac8d09f6bc01bb144da5feadf40f09cfdde97494727",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

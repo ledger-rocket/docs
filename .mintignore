@@ -5,3 +5,9 @@
 # Draft content
 drafts/
 *.draft.mdx
+
+# Internal reference / competitor analysis
+reference/
+
+# Source markdown (pre-Mintlify conversion)
+published/

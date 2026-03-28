@@ -1,0 +1,246 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5210,
+    "name": "recon_disbursement_clearing",
+    "description": "Flush the disbursement clearing balance through Suspense. Moves Clearing Total (10101) to Suspense (10103) on the economic ledger, with a mirror of Cash Balances - Clearing (11901) to Cash Balances - Suspense (11903) on the allocation ledger. This is the disbursement-side equivalent of UC1's clearing flush. Fires per disbursement detail line reconciled.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on the economic ledger: Clearing Total (10101) decreases and Suspense (10103) increases. Total assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on the allocation ledger: Cash Balances - Clearing (11901) decreases and Cash Balances - Suspense (11903) increases. Total assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation service matches a disbursement clearing entry against the bank statement. Fires once per disbursement detail line reconciled.",
+    "ledger_scope_descriptions": {
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where Cash Balances - Clearing is flushed to Cash Balances - Suspense for FDIC tracking.",
+      "operational": "Operational ledger (ID 5001) where Clearing Total is flushed to Suspense for reconciliation."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          },
+          {
+            "id": "IFRS_9",
+            "version": 1
+          }
+        ],
+        "description": "Flush the disbursement clearing balance into Suspense for reconciliation against the bank statement Control flush."
+      },
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Mirror the clearing flush on the allocation ledger for FDIC position tracking."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Master FBO - Clearing Total on the economic ledger; debited to flush the clearing balance.",
+        "mask": "10101",
+        "purpose": "clearing_total"
+      },
+      {
+        "description": "Master FBO - Suspense on the economic ledger; credited to receive the clearing balance for reconciliation.",
+        "mask": "10103",
+        "purpose": "suspense"
+      },
+      {
+        "description": "Cash Balances - Master FBO Clearing on the allocation ledger; debited to flush.",
+        "mask": "11901",
+        "purpose": "cash_balances_clearing"
+      },
+      {
+        "description": "Cash Balances - Master FBO Suspense on the allocation ledger; credited to receive.",
+        "mask": "11903",
+        "purpose": "cash_balances_suspense"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "ach_file_id": {
+          "minLength": 1,
+          "type": "string",
+          "description": "ACH file being reconciled.",
+          "maxLength": 100
+        },
+        "consumer_external_id": {
+          "description": "Consumer whose disbursement is being reconciled.",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "statement_file_id": {
+          "description": "Bank statement file for reconciliation pairing.",
+          "maxLength": 100,
+          "type": "string"
+        }
+      },
+      "required": [
+        "ach_file_id",
+        "consumer_external_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.suspense.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.clearing_total.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Flush Clearing Total to Suspense on the economic ledger.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cash_balances_suspense.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.cash_balances_clearing.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the clearing flush on the allocation ledger for FDIC tracking.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5210
+          ],
+          "event_id": "01952100-0000-7210-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "ach_file_id": "ach-disb-2026-03-01-001",
+            "consumer_external_id": "cust-a-001"
+          },
+          "occurred_at": 1772704100000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000101001",
+              "purpose": "clearing_total"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "suspense"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "cash_balances_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011903",
+              "purpose": "cash_balances_suspense"
+            }
+          ],
+          "amount": 30000
+        },
+        "expected_transfers": [
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000004",
+            "debit_account_id": "50050000-0000-4001-a000-000000101001",
+            "leg_number": 1
+          },
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011903",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 2
+          }
+        ],
+        "name": "recon_disb_clearing_cust_a_300",
+        "description": "Flush $300.00 disbursement clearing for Customer A: DR Clearing Total, CR Suspense on economic; DR CB Clearing, CR CB Suspense on allocation."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5210
+          ],
+          "event_id": "01952100-0000-7210-8000-000000000002",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "ach_file_id": "ach-disb-2026-03-01-002",
+            "consumer_external_id": "cust-b-002"
+          },
+          "occurred_at": 1772704200000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000101001",
+              "purpose": "clearing_total"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "suspense"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "cash_balances_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011903",
+              "purpose": "cash_balances_suspense"
+            }
+          ],
+          "amount": 20000
+        },
+        "expected_transfers": [
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000004",
+            "debit_account_id": "50050000-0000-4001-a000-000000101001",
+            "leg_number": 1
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011903",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 2
+          }
+        ],
+        "name": "recon_disb_clearing_cust_b_200",
+        "description": "Flush $200.00 disbursement clearing for Customer B: DR Clearing Total, CR Suspense on economic; DR CB Clearing, CR CB Suspense on allocation."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c29-1202-75f4-81b9-e130ca8f037c",
+    "state": "DRAFT",
+    "revision": 5,
+    "transition_date": 1774293946882,
+    "content_hash": "sha256:eb6656e83dbb8c14e6382c5feab03e3ea82395891af4cd970613ef1f4d29f7fa",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

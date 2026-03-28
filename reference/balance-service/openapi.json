@@ -1,0 +1,1513 @@
+{
+  "components": {
+    "schemas": {
+      "contracts.AccountChainBalancesResponse": {
+        "description": "Per-chain balance breakdown for all event chains touching an account (Athena-backed)",
+        "properties": {
+          "account_id": {
+            "description": "Account identifier",
+            "example": "0192b4f0-7abc-7def-8000-000000000001",
+            "format": "uuid",
+            "type": "string"
+          },
+          "chain_count": {
+            "description": "Number of distinct chains",
+            "example": 16,
+            "type": "integer"
+          },
+          "chains": {
+            "description": "Balance per event chain",
+            "items": {
+              "$ref": "#/components/schemas/contracts.ChainBalanceEntry"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "contracts.AccountCodeBalanceEntry": {
+        "description": "Balance for one account returned by an account-code query",
+        "properties": {
+          "account_id": {
+            "description": "Account identifier",
+            "example": "0192b4f0-7abc-7def-8000-000000000001",
+            "format": "uuid",
+            "type": "string"
+          },
+          "credits_posted": {
+            "description": "Total credits posted in minor units",
+            "example": "1500000",
+            "type": "string"
+          },
+          "debits_posted": {
+            "description": "Total debits posted in minor units",
+            "example": "500000",
+            "type": "string"
+          },
+          "ledger": {
+            "description": "TigerBeetle ledger this account belongs to",
+            "example": 700,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "contracts.AccountCodeBalanceResponse": {
+        "description": "Balances for all accounts with a given account code",
+        "properties": {
+          "account_code": {
+            "description": "The queried account code",
+            "example": 1000,
+            "type": "integer"
+          },
+          "account_count": {
+            "description": "Number of accounts found with this code",
+            "example": 3,
+            "type": "integer"
+          },
+          "accounts": {
+            "description": "Individual account balances",
+            "items": {
+              "$ref": "#/components/schemas/contracts.AccountCodeBalanceEntry"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "contracts.AccountCodeLedgerTimeseries": {
+        "description": "Aggregated balance timeseries for accounts on a single ledger",
+        "properties": {
+          "account_count": {
+            "description": "Number of accounts on this ledger contributing to the totals",
+            "example": 2,
+            "type": "integer"
+          },
+          "balances": {
+            "description": "Aggregated balance points (debits/credits summed across all accounts on this ledger)",
+            "items": {
+              "$ref": "#/components/schemas/contracts.BalancePoint"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "ledger": {
+            "description": "TigerBeetle ledger ID",
+            "example": 700,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "contracts.AccountCodeTimeseriesResponse": {
+        "description": "Aggregated balance history for an account code, grouped by ledger",
+        "properties": {
+          "account_code": {
+            "description": "The queried account code",
+            "example": 1000,
+            "type": "integer"
+          },
+          "ledgers": {
+            "description": "Timeseries per ledger",
+            "items": {
+              "$ref": "#/components/schemas/contracts.AccountCodeLedgerTimeseries"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "contracts.BalancePoint": {
+        "description": "Balance snapshot at a specific timestamp. Net balance = credits_posted - debits_posted",
+        "properties": {
+          "credits_posted": {
+            "description": "Total credits posted in minor units at this point in time",
+            "example": "1500000",
+            "type": "string"
+          },
+          "debits_posted": {
+            "description": "Total debits posted in minor units at this point in time",
+            "example": "500000",
+            "type": "string"
+          },
+          "timestamp": {
+            "description": "Timestamp in nanoseconds since Unix epoch",
+            "example": 1704067200000000000,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "contracts.BalanceResponse": {
+        "description": "Account balance information at a point in time. Net balance = credits_posted - debits_posted",
+        "properties": {
+          "account_id": {
+            "description": "Account identifier",
+            "example": "0192b4f0-7abc-7def-8000-000000000001",
+            "format": "uuid",
+            "type": "string"
+          },
+          "credits_posted": {
+            "description": "Total credits posted in minor units (e.g., 1500000 = $15,000.00)",
+            "example": "1500000",
+            "type": "string"
+          },
+          "debits_posted": {
+            "description": "Total debits posted in minor units (e.g., 500000 = $5,000.00)",
+            "example": "500000",
+            "type": "string"
+          },
+          "timestamp": {
+            "description": "Timestamp in nanoseconds since Unix epoch",
+            "example": 1704067200000000000,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "contracts.BalanceTimeseriesResponse": {
+        "description": "Account balance history over time",
+        "properties": {
+          "account_id": {
+            "description": "Account identifier",
+            "example": "0192b4f0-7abc-7def-8000-000000000001",
+            "format": "uuid",
+            "type": "string"
+          },
+          "balances": {
+            "description": "Balance snapshots in chronological order",
+            "items": {
+              "$ref": "#/components/schemas/contracts.BalancePoint"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "contracts.CacheStatsResponse": {
+        "properties": {
+          "hit_rate": {
+            "example": 0.95,
+            "type": "number"
+          },
+          "hits": {
+            "example": 1000,
+            "type": "integer"
+          },
+          "misses": {
+            "example": 50,
+            "type": "integer"
+          },
+          "size": {
+            "example": 150,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "contracts.ChainBalanceEntry": {
+        "description": "Per-chain balance showing debits/credits from all transfers in the chain touching this account",
+        "properties": {
+          "credits_posted": {
+            "description": "Total credits from this chain on this account in minor units",
+            "example": "2000000",
+            "type": "string"
+          },
+          "debits_posted": {
+            "description": "Total debits from this chain on this account in minor units",
+            "example": "1830000",
+            "type": "string"
+          },
+          "event_count": {
+            "description": "Number of distinct events in this chain that touched this account",
+            "example": 10,
+            "type": "integer"
+          },
+          "original_event_id": {
+            "description": "Original event that started this chain",
+            "example": "0192b4f0-7abc-7def-8000-000000000010",
+            "format": "uuid",
+            "type": "string"
+          },
+          "original_event_info": {
+            "description": "Original event context as JSON (file header metadata)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "contracts.ChainSummaryEntry": {
+        "description": "Balance summary for a single event chain grouped by template",
+        "properties": {
+          "original_event_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "original_event_info": {
+            "type": "string"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/contracts.ChainTemplateSummary"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "contracts.ChainSummaryRequest": {
+        "description": "Request for per-chain, per-template balance summary across multiple chains",
+        "properties": {
+          "account_id": {
+            "description": "Account ID to scope results to (optional — filters transfers touching this account)",
+            "example": "0192b4f0-7abc-7def-8000-000000000001",
+            "format": "uuid",
+            "type": "string"
+          },
+          "account_scoped_codes": {
+            "description": "Template codes to apply the account_id filter to (optional — if empty and account_id is set, filters all codes)",
+            "example": [
+              5103
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "ledger_id": {
+            "description": "Ledger ID to query (required — prevents cross-ledger aggregation)",
+            "example": 5001,
+            "type": "integer"
+          },
+          "original_event_ids": {
+            "description": "Original event IDs to summarize",
+            "example": [
+              "0192b4f0-7abc-7def-8000-000000000010"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "template_ids": {
+            "description": "Template IDs to include (empty = all templates)",
+            "example": [
+              5103,
+              5104
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "contracts.ChainSummaryResponse": {
+        "description": "Batch chain summary response with per-chain, per-template balances (Athena-backed)",
+        "properties": {
+          "chain_count": {
+            "example": 50,
+            "type": "integer"
+          },
+          "chains": {
+            "items": {
+              "$ref": "#/components/schemas/contracts.ChainSummaryEntry"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "contracts.ChainTemplateSummary": {
+        "description": "Per-template debits/credits within a single event chain",
+        "properties": {
+          "credits_posted": {
+            "example": "0",
+            "type": "string"
+          },
+          "debits_posted": {
+            "example": "20274030732",
+            "type": "string"
+          },
+          "template_id": {
+            "example": 5103,
+            "type": "integer"
+          },
+          "transfer_count": {
+            "example": 405507,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "contracts.EventAccountBalance": {
+        "description": "Aggregated balance changes for an account from related events",
+        "properties": {
+          "account_id": {
+            "description": "Account identifier",
+            "example": "0192b4f0-7abc-7def-8000-000000000001",
+            "format": "uuid",
+            "type": "string"
+          },
+          "credits": {
+            "description": "Total credits from related events in minor units (e.g., 150000 = $1,500.00)",
+            "example": "150000",
+            "type": "string"
+          },
+          "debits": {
+            "description": "Total debits from related events in minor units (e.g., 100000 = $1,000.00)",
+            "example": "100000",
+            "type": "string"
+          },
+          "net": {
+            "description": "Net change (credits - debits) in minor units (e.g., 50000 = $500.00)",
+            "example": "50000",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "contracts.EventChainBalanceResponse": {
+        "description": "Aggregated balance information for a chain of related events",
+        "properties": {
+          "accounts": {
+            "description": "Aggregated balances per account",
+            "items": {
+              "$ref": "#/components/schemas/contracts.EventAccountBalance"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "event_id": {
+            "description": "The queried event identifier",
+            "example": "0192b4f0-7abc-7def-8000-000000000020",
+            "format": "uuid",
+            "type": "string"
+          },
+          "events_processed": {
+            "description": "Number of events processed in the chain",
+            "example": 3,
+            "type": "integer"
+          },
+          "original_event_id": {
+            "description": "Original event that started this chain",
+            "example": "0192b4f0-7abc-7def-8000-000000000010",
+            "format": "uuid",
+            "type": "string"
+          },
+          "related_event_ids": {
+            "description": "All event IDs in the chain",
+            "example": [
+              "0192b4f0-7abc-7def-8000-000000000010",
+              "0192b4f0-7abc-7def-8000-000000000011"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "transfers_processed": {
+            "description": "Total number of transfers across all events",
+            "example": 15,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "contracts.EventChainDetailEntry": {
+        "description": "One event in an event chain with its template and amount",
+        "properties": {
+          "amount": {
+            "description": "Event amount in minor units",
+            "example": 1000000,
+            "type": "integer"
+          },
+          "event_id": {
+            "description": "Event identifier",
+            "example": "0192b4f0-7abc-7def-8000-000000000020",
+            "format": "uuid",
+            "type": "string"
+          },
+          "extra_metadata": {
+            "description": "Event extra_metadata as JSON",
+            "type": "string"
+          },
+          "previous_event_id": {
+            "description": "Previous event ID in the lifecycle chain",
+            "type": "string"
+          },
+          "template_ids": {
+            "description": "Template IDs processed by this event",
+            "example": [
+              5103
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "contracts.EventChainDetailResponse": {
+        "description": "All events sharing an original_event_id with their templates and amounts (Athena-backed)",
+        "properties": {
+          "event_count": {
+            "description": "Total number of events",
+            "example": 500002,
+            "type": "integer"
+          },
+          "events": {
+            "description": "Events in this chain",
+            "items": {
+              "$ref": "#/components/schemas/contracts.EventChainDetailEntry"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "original_event_id": {
+            "description": "Original event that started this chain",
+            "example": "0192b4f0-7abc-7def-8000-000000000010",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "contracts.MultiAccountTimeseriesResponse": {
+        "description": "Balance history for multiple accounts",
+        "properties": {
+          "accounts": {
+            "description": "Array of account balance histories",
+            "items": {
+              "$ref": "#/components/schemas/contracts.BalanceTimeseriesResponse"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "contracts.ProblemDetails": {
+        "properties": {
+          "correlation_id": {
+            "description": "Correlation ID for request tracing.",
+            "example": "abc-123-def",
+            "type": "string"
+          },
+          "detail": {
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "example": "invalid request body",
+            "type": "string"
+          },
+          "instance": {
+            "description": "A URI reference that identifies the specific occurrence of the problem.\nThis service uses the request path.",
+            "example": "/api/v1/accounts",
+            "type": "string"
+          },
+          "status": {
+            "description": "The HTTP status code generated by the origin server.",
+            "example": 400,
+            "type": "integer"
+          },
+          "title": {
+            "description": "A short, human-readable summary of the problem type.\nUse the HTTP status text (e.g., \"Bad Request\").",
+            "example": "Bad Request",
+            "type": "string"
+          },
+          "type": {
+            "description": "A URI reference that identifies the problem type.\nThe service uses service-scoped problem type URIs.",
+            "example": "https://ledger-rocket.dev/balance-service/problems/invalid-request",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "contracts.TimeseriesBalanceRequest": {
+        "description": "Request balance history for multiple accounts (up to 8190)",
+        "properties": {
+          "account_ids": {
+            "description": "List of account identifiers to query (max 8190)\nNote: swaggertype tag removed due to swag v2 bug - schema is fixed in postprocessor",
+            "items": {
+              "$ref": "#/components/schemas/valuetypes.AccountID"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "required": [
+          "account_ids"
+        ],
+        "type": "object"
+      },
+      "contracts.UUIDsResponse": {
+        "description": "UUIDv7 generation response for batch operations",
+        "properties": {
+          "count": {
+            "description": "Number of UUIDs generated",
+            "example": 2,
+            "type": "integer"
+          },
+          "uuids": {
+            "description": "Array of generated UUIDv7 identifiers",
+            "example": [
+              "0192b4f0-7abc-7def-8000-000000000001",
+              "0192b4f0-7abc-7def-8000-000000000002"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "health.Check": {
+        "properties": {
+          "duration": {
+            "description": "Duration in nanoseconds",
+            "type": "integer"
+          },
+          "last_checked": {
+            "description": "Unix timestamp",
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/health.Status"
+          }
+        },
+        "type": "object"
+      },
+      "health.CheckEntry": {
+        "properties": {
+          "check": {
+            "$ref": "#/components/schemas/health.Check"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "health.Response": {
+        "properties": {
+          "checks": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/health.Check"
+            },
+            "type": "object"
+          },
+          "checks_list": {
+            "items": {
+              "$ref": "#/components/schemas/health.CheckEntry"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "service": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/health.Status"
+          },
+          "uptime": {
+            "description": "Uptime in seconds",
+            "type": "integer"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "health.Status": {
+        "enum": [
+          "healthy",
+          "unhealthy"
+        ],
+        "type": "string",
+        "x-enum-varnames": [
+          "StatusHealthy",
+          "StatusUnhealthy"
+        ]
+      },
+      "valuetypes.AccountID": {
+        "type": "object"
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "",
+    "url": ""
+  },
+  "info": {
+    "description": "TigerBeetle balance service API for balance queries and history",
+    "title": "Balance Service API",
+    "version": "1.0",
+    "x-tagGroups": [
+      {
+        "name": "Core",
+        "tags": [
+          "Balance"
+        ]
+      },
+      {
+        "name": "Operations",
+        "tags": [
+          "Health",
+          "Utility"
+        ]
+      }
+    ]
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/account-codes/{code}/balance": {
+      "get": {
+        "description": "Query all TigerBeetle accounts sharing a given account code and return their balances.\nReturns \u003e8190 accounts error suggesting the rollup account instead.",
+        "operationId": "getAccountCodeBalance",
+        "parameters": [
+          {
+            "description": "Account code",
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Point-in-time balance (RFC3339). When set, each account's historical balance at this timestamp is used instead of the current balance.",
+            "in": "query",
+            "name": "timestamp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by template ID; only effective with timestamp",
+            "in": "query",
+            "name": "template_id",
+            "schema": {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.AccountCodeBalanceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get balance by account code",
+        "tags": [
+          "Balance"
+        ]
+      }
+    },
+    "/api/v1/account-codes/{code}/balance-history": {
+      "get": {
+        "description": "Aggregated balance timeseries for all accounts with a given account code, grouped by ledger.\nDebits/credits are summed across accounts on each ledger. Returns error if \u003e8190 accounts.",
+        "operationId": "getAccountCodeBalanceHistory",
+        "parameters": [
+          {
+            "description": "Account code",
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Comma-separated RFC3339 timestamps for the timeseries query",
+            "in": "query",
+            "name": "timestamps",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by template ID; only include transfers from this template",
+            "in": "query",
+            "name": "template_id",
+            "schema": {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.AccountCodeTimeseriesResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get balance history by account code",
+        "tags": [
+          "Balance"
+        ]
+      }
+    },
+    "/api/v1/accounts/{account_id}/balance": {
+      "get": {
+        "description": "Get the balance of an account, optionally at a specific timestamp. Use date_type to select processed_date (real-time from TigerBeetle) or value_date (historical from Athena).",
+        "operationId": "getBalance",
+        "parameters": [
+          {
+            "description": "Account UUID",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Point-in-time timestamp (RFC3339 format)",
+            "in": "query",
+            "name": "timestamp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Date basis: 'processed_date' (default, TigerBeetle) or 'value_date' (Athena)",
+            "in": "query",
+            "name": "date_type",
+            "schema": {
+              "enum": [
+                "processed_date",
+                "value_date"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.BalanceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get account balance",
+        "tags": [
+          "Balance"
+        ]
+      }
+    },
+    "/api/v1/accounts/{account_id}/balance-history": {
+      "get": {
+        "description": "Get balance snapshots for a single account at each requested timestamp.\nWhen template_id is set, only transfers from that template contribute to the running totals.",
+        "operationId": "getBalanceHistory",
+        "parameters": [
+          {
+            "description": "Account UUID",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated RFC3339 timestamps",
+            "in": "query",
+            "name": "timestamps",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by template ID; only include transfers from this template",
+            "in": "query",
+            "name": "template_id",
+            "schema": {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.BalanceTimeseriesResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get balance history",
+        "tags": [
+          "Balance"
+        ]
+      }
+    },
+    "/api/v1/accounts/{account_id}/chain-balances": {
+      "get": {
+        "description": "Get per-chain debits/credits for all event chains touching this account (Athena-backed)",
+        "operationId": "getAccountChainBalances",
+        "parameters": [
+          {
+            "description": "Account UUID",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Account code (e.g. 10104)",
+            "in": "query",
+            "name": "account_code",
+            "required": true,
+            "schema": {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.AccountChainBalancesResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get chain balances for account",
+        "tags": [
+          "Balance"
+        ]
+      }
+    },
+    "/api/v1/balance-history:query": {
+      "post": {
+        "description": "Get balance history for multiple accounts at specified timestamps.\nUse date_type to select processed_date (TigerBeetle) or value_date (Athena).\nWhen template_id is set (processed_date only), only matching transfers contribute.",
+        "operationId": "queryBalanceHistory",
+        "parameters": [
+          {
+            "description": "Comma-separated RFC3339 timestamps",
+            "in": "query",
+            "name": "timestamps",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Date basis: 'processed_date' (default, TigerBeetle) or 'value_date' (Athena)",
+            "in": "query",
+            "name": "date_type",
+            "schema": {
+              "enum": [
+                "processed_date",
+                "value_date"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by template ID; only include transfers from this template (ignored for value_date)",
+            "in": "query",
+            "name": "template_id",
+            "schema": {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object"
+                  },
+                  {
+                    "$ref": "#/components/schemas/contracts.TimeseriesBalanceRequest",
+                    "description": "Account IDs to query (max 8190)",
+                    "summary": "request"
+                  }
+                ]
+              }
+            }
+          },
+          "description": "Account IDs to query (max 8190)",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.MultiAccountTimeseriesResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Query balance history (bulk)",
+        "tags": [
+          "Balance"
+        ]
+      }
+    },
+    "/api/v1/cache/stats": {
+      "get": {
+        "description": "Get cache performance statistics",
+        "operationId": "getCacheStats",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.CacheStatsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Get cache stats",
+        "tags": [
+          "Utility"
+        ]
+      }
+    },
+    "/api/v1/chain-summary:query": {
+      "post": {
+        "description": "Get per-chain, per-template balance summaries for multiple event chains (Athena-backed)",
+        "operationId": "queryChainSummary",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object"
+                  },
+                  {
+                    "$ref": "#/components/schemas/contracts.ChainSummaryRequest",
+                    "description": "Chain summary request",
+                    "summary": "request"
+                  }
+                ]
+              }
+            }
+          },
+          "description": "Chain summary request",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ChainSummaryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Query chain summary (batch)",
+        "tags": [
+          "Balance"
+        ]
+      }
+    },
+    "/api/v1/events/{event_id}/balance": {
+      "get": {
+        "description": "Get aggregated balance changes for all events in a chain",
+        "operationId": "getEventChainBalance",
+        "parameters": [
+          {
+            "description": "Event UUID (UUIDv7)",
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.EventChainBalanceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        },
+        "summary": "Get event chain balance",
+        "tags": [
+          "Balance"
+        ]
+      }
+    },
+    "/api/v1/events/{event_id}/chain": {
+      "get": {
+        "description": "Get all events in a chain by original_event_id with templates and amounts (Athena-backed)",
+        "operationId": "getEventChainDetail",
+        "parameters": [
+          {
+            "description": "Original event UUID (UUIDv7)",
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.EventChainDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get event chain detail",
+        "tags": [
+          "Balance"
+        ]
+      }
+    },
+    "/api/v1/uuids": {
+      "post": {
+        "description": "Generate one or more UUIDv7 identifiers for accounts or transfers",
+        "operationId": "generateUUIDs",
+        "parameters": [
+          {
+            "description": "Number of UUIDs to generate (default: 1)",
+            "in": "query",
+            "name": "count",
+            "schema": {
+              "maximum": 10,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.UUIDsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "Generate UUIDs",
+        "tags": [
+          "Utility"
+        ]
+      }
+    },
+    "/livez": {
+      "get": {
+        "description": "Kubernetes liveness probe endpoint",
+        "operationId": "livez",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/health.Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Liveness probe",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/readyz": {
+      "get": {
+        "description": "Kubernetes readiness probe endpoint with dependency checks",
+        "operationId": "readyz",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/health.Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/contracts.ProblemDetails"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Readiness probe",
+        "tags": [
+          "Health"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/v2/balances"
+    }
+  ],
+  "tags": [
+    {
+      "description": "Balance query and history endpoints.",
+      "name": "Balance"
+    },
+    {
+      "description": "Service liveness/readiness endpoints.",
+      "name": "Health"
+    },
+    {
+      "description": "Utility endpoints for UUID generation and cache stats.",
+      "name": "Utility"
+    }
+  ]
+}

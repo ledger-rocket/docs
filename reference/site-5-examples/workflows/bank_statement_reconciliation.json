@@ -1,0 +1,81 @@
+{
+  "workflow": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/v1.1.0/workflow.schema.json",
+    "workflow_id": "019c8f31-d012-77cb-a53f-78aa8ff18d80",
+    "code": "bank-statement-reconciliation",
+    "site_id": 5,
+    "name": "Bank Statement Reconciliation",
+    "description": "UC1/UC4 -- Bank Statement Reconciliation. Reconciles a bank statement against its corresponding allocation file. The allocation file allocates deposits to Customer Hold accounts and tracks expected FDIC fund locations. The bank statement records confirmed cash. Reconciliation zeroes out clearing and control accounts, moves consumer funds from Hold to Available, and confirms FDIC positions.",
+    "require_shared_ledgers": true,
+    "steps": [
+      {
+        "id": "allocate_deposit",
+        "template_id": 5101,
+        "event_sources": [
+          "allocation-file-service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Allocate each consumer\u2019s share from the allocation file: debit per-file Clearing (10101) and credit Customer Hold (20101) on the economic ledger; debit Cash Balances - Clearing (11901) and credit Customer Master FBO Clearing (21101) on the allocation ledger.",
+        "trigger": "per_consumer_line_item_in_allocation_file",
+        "repeat_while": "consumer_line_items_remaining_in_allocation_file",
+        "repeat_while_description": "Fires once per consumer line item in the allocation file. A 300k-consumer file produces 300k independent events, each as its own atomic commit spanning both ledgers."
+      },
+      {
+        "id": "ingest_statement_line_item",
+        "template_id": 5401,
+        "event_sources": [
+          "bank-statement-feed"
+        ],
+        "examples": [
+          1
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Record a bank statement line item: debit Settled (10100) and credit Control (10102) on the economic ledger; debit Cash Balances (11900) and credit Cash Balances - Control (11902) on the allocation ledger.",
+        "trigger": "bank_statement_file_received",
+        "repeat_while": "inbound_line_items_remaining_in_statement_file",
+        "repeat_while_description": "Fires once per inbound line item in the bank statement file."
+      },
+      {
+        "id": "flush_clearing",
+        "template_id": 5402,
+        "event_sources": [
+          "reconciliation-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Reconcile clearing: zero out Clearing Total into Suspense on the economic ledger, move consumer funds from Hold (20101) to Available (20100), flush Cash Balances - Clearing (11901) into Cash Balances - Suspense (11903) on the allocation ledger, and confirm consumer FBO positions from Clearing (21101) to settled (21100).",
+        "trigger": "all_consumer_allocations_complete_for_file",
+        "condition": "per_file_clearing_instance_balance_is_zero",
+        "condition_description": "Fires only after all per-consumer allocation events for the file have completed and the per-file Clearing instance balance has been drawn down to zero."
+      },
+      {
+        "id": "flush_control",
+        "template_id": 5407,
+        "event_sources": [
+          "reconciliation-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Reconcile control: flush Control (10102) into Suspense (10103) on the economic ledger, and flush Cash Balances - Control (11902) into Cash Balances - Suspense (11903) on the allocation ledger. Suspense nets to zero.",
+        "trigger": "bank_statement_matched_against_allocation_file"
+      }
+    ]
+  },
+  "status": "DELETED"
+}

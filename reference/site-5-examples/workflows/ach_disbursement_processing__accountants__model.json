@@ -1,0 +1,82 @@
+{
+  "workflow": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/v1.1.0/workflow.schema.json",
+    "workflow_id": "019ca97d-3e28-7d6a-99dd-ed5b94053e10",
+    "code": "disbursement-ach-accountants",
+    "site_id": 5,
+    "name": "ACH Disbursement Processing (Accountants' Model)",
+    "description": "# UC2 Alt: ACH Disbursement -- Accountants' Model\n\nAlternative 4-template disbursement flow designed by the accounting team. Differs from the primary model (disbursement-ach) in several ways:\n\n- **No batch concept** -- no NACHA file header or per-customer submission step. Initiation goes straight to bank statement.\n- **Hold accounts** -- uses Hold (20101) and Pending Disbursements (20102) as intermediate tracking positions, reversed at reconciliation.\n- **Suspense intermediary** -- reconciliation is two-step (clearing flush then bank payment flush) via Suspense (10103), unlike the primary model's atomic reconciliation.\n- **No rail payable (22100)** -- uses Clearing Total (10101) instead of a dedicated per-rail payable account.\n\n## Steps\n\n1. **Initiate** -- Decrease Available, credit Clearing Total, create Hold and Pending Disbursement positions. Per customer.\n2. **Bank Statement** -- Record FBO debit: DR Control, CR Settled. Per statement line.\n3. **Recon Clearing** -- Zero Clearing Total to Suspense, reverse Hold and Pending. Per customer.\n4. **Recon Bank Payment** -- Zero Suspense against Control. Per matched line.\n\n**Final state:** All clearing, control, suspense, hold, and pending accounts are zero.",
+    "require_shared_ledgers": true,
+    "steps": [
+      {
+        "id": "initiate_disbursement",
+        "template_id": 5212,
+        "event_sources": [
+          "disbursement-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Initiate a customer disbursement: debit Available (20100) and credit Clearing Total (10101), debit Pending Disbursements (20102) and credit Hold (20101) on the economic ledger. Mirror on the allocation ledger.",
+        "trigger": "customer_disbursement_requested",
+        "repeat_while": "disbursement_requests_pending",
+        "repeat_while_description": "Fires once per customer disbursement request."
+      },
+      {
+        "id": "ingest_bank_statement",
+        "template_id": 5213,
+        "event_sources": [
+          "bank-statement-feed"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Record the bank statement line confirming cash has left the FBO account: debit Control (10102) and credit Settled (10100). Mirror on the allocation ledger.",
+        "trigger": "bank_statement_outbound_line_received",
+        "repeat_while": "outbound_line_items_remaining_in_statement",
+        "repeat_while_description": "Fires once per outbound disbursement line item in the bank statement."
+      },
+      {
+        "id": "reconcile_clearing",
+        "template_id": 5214,
+        "event_sources": [
+          "reconciliation-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Reconciliation clearing: zero Clearing Total (10101) to Suspense (10103), reverse Hold (20101) and Pending Disbursements (20102). Mirror on the allocation ledger.",
+        "trigger": "recon_engine_matches_disbursement",
+        "repeat_while": "matched_disbursements_pending_clearing",
+        "repeat_while_description": "Fires once per matched customer disbursement."
+      },
+      {
+        "id": "reconcile_bank_payment",
+        "template_id": 5215,
+        "event_sources": [
+          "reconciliation-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Reconciliation bank payment: zero Suspense (10103) against Control (10102), completing the reconciliation cycle. Mirror on the allocation ledger.",
+        "trigger": "recon_engine_matches_bank_statement",
+        "condition": "suspense_and_control_have_balances",
+        "condition_description": "Fires when the matching engine pairs suspense against a bank statement control entry. Both must have outstanding balances."
+      }
+    ]
+  },
+  "status": "DELETED"
+}

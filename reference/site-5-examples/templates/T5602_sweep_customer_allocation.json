@@ -1,0 +1,324 @@
+{
+  "template": {
+    "$schema": "",
+    "site_id": 5,
+    "template_id": 5602,
+    "name": "sweep_customer_allocation",
+    "description": "UC6 Step 2: Creates expected movements of cash between Master FBO and Program Bank X at customer level. Leg 1 on the allocation ledger creates per-customer clearing positions between Cash Balances Clearing accounts (11901). Leg 2 on the intention ledger queues per-customer sweep intentions between source and destination intention accounts (8100/8200). Direction is bidirectional -- the caller swaps which accounts are debited vs credited depending on whether the customer's funds are moving to or from the program bank.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification between two Cash Balances Clearing accounts. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      },
+      {
+        "account_type": "SUPPLEMENTAL",
+        "description": "Supplemental-to-supplemental reclassification: destination intention debited, source intention credited. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "sweep_queue"
+      }
+    ],
+    "category": "SWEEP",
+    "product": "FDIC_SWEEP",
+    "event_type": "TRANSFER",
+    "trigger": "Sweep job identifies required per-customer movement between Master FBO and Program Bank X.",
+    "ledger_scope_descriptions": {
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where per-customer clearing positions are created between banks.",
+      "sweep_queue": "Sweep queue ledger (ID 5003) where per-customer sweep intentions are queued."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Create expected clearing positions for inter-bank sweep at customer allocation level."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Queue per-customer sweep intention between source and destination bank."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Cash Balances Clearing asset; debited to create expected inbound movement.",
+        "mask": "11901",
+        "purpose": "debit_clearing"
+      },
+      {
+        "description": "Cash Balances Clearing asset; credited to create expected outbound movement.",
+        "mask": "11901",
+        "purpose": "credit_clearing"
+      },
+      {
+        "description": "Sweep source intention supplemental; credited to queue per-customer sweep source.",
+        "mask": "8100|8200",
+        "purpose": "source_intention"
+      },
+      {
+        "description": "Sweep destination intention supplemental; debited to queue per-customer sweep destination.",
+        "mask": "8100|8200",
+        "purpose": "destination_intention"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "fbo_balance": {
+          "description": "Master FBO balance formatted as dollars with cents (e.g. \"755509.34\").",
+          "type": "string",
+          "example": "755509.34"
+        },
+        "network_position": {
+          "description": "Net network position formatted as dollars with cents (e.g. \"0.00\").",
+          "type": "string",
+          "example": "0.00"
+        },
+        "consumer_external_id": {
+          "type": "string",
+          "description": "Consumer entity external identifier.",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "sweep_batch_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string",
+          "description": "Unique identifier for the sweep batch."
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "out",
+            "in"
+          ],
+          "description": "Direction of the sweep movement."
+        }
+      },
+      "required": [
+        "sweep_batch_id",
+        "consumer_external_id",
+        "direction",
+        "fbo_balance",
+        "network_position"
+      ],
+      "type": "object"
+    },
+    "validations": [
+      {
+        "description": "Sweep source and destination intention accounts must use different account codes.",
+        "expression": "accounts.source_intention.account_code.code != accounts.destination_intention.account_code.code",
+        "name": "distinct_intention_codes"
+      }
+    ],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.credit_clearing.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.debit_clearing.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Track per-customer FDIC fund reallocation between banks for the sweep.",
+        "leg_number": 1,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.source_intention.account_id",
+        "credit_account_type": "SUPPLEMENTAL",
+        "debit_account": "accounts.destination_intention.account_id",
+        "debit_account_type": "SUPPLEMENTAL",
+        "description": "Queue per-customer sweep intention: destination debited (inbound expected), source credited (outbound queued).",
+        "leg_number": 2,
+        "ledger_scope": "sweep_queue",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5602
+          ],
+          "event_id": "01956020-0000-7602-8000-000000000001",
+          "event_source": "sweep-engine",
+          "extra_metadata": {
+            "consumer_external_id": "laurence-001",
+            "sweep_batch_id": "sweep-batch-001",
+            "direction": "out",
+            "fbo_balance": "755509.34",
+            "network_position": "0.00"
+          },
+          "occurred_at": 1772531200000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4002-a000-00000000000a",
+              "purpose": "debit_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "credit_clearing"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-0000000ca001",
+              "purpose": "source_intention"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-0000000ca002",
+              "purpose": "destination_intention"
+            }
+          ],
+          "amount": 7000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 7000000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011901",
+            "debit_account_id": "50050000-0000-4002-a000-00000000000a",
+            "leg_number": 1
+          },
+          {
+            "amount": 7000000,
+            "credit_account_id": "50050001-0000-4003-a000-0000000ca001",
+            "debit_account_id": "50050001-0000-4003-a000-0000000ca002",
+            "leg_number": 2
+          }
+        ],
+        "name": "laurence_70k_over_fdic_limit",
+        "description": "Laurence has $320,000 in deposits, exceeding $250,000 FDIC insurance limit by $70,000. Excess swept FBO to Program Bank X. DR PBX Clearing, CR FBO Clearing. DR PBX Intention, CR FBO Intention."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5602
+          ],
+          "event_id": "01956020-0000-7602-8000-000000000002",
+          "event_source": "sweep-engine",
+          "extra_metadata": {
+            "consumer_external_id": "stepan-001",
+            "sweep_batch_id": "sweep-batch-001",
+            "direction": "in",
+            "fbo_balance": "755509.34",
+            "network_position": "0.00"
+          },
+          "occurred_at": 1772531205000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "debit_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-00000000000a",
+              "purpose": "credit_clearing"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-0000000cb002",
+              "purpose": "source_intention"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-0000000cb001",
+              "purpose": "destination_intention"
+            }
+          ],
+          "amount": 2000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2000000,
+            "credit_account_id": "50050000-0000-4002-a000-00000000000a",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 1
+          },
+          {
+            "amount": 2000000,
+            "credit_account_id": "50050001-0000-4003-a000-0000000cb002",
+            "debit_account_id": "50050001-0000-4003-a000-0000000cb001",
+            "leg_number": 2
+          }
+        ],
+        "name": "stepan_20k_under_fdic_limit",
+        "description": "Stepan has $230,000 in deposits, $20,000 under $250,000 FDIC insurance limit. $20k returned from Program Bank X to FBO. DR FBO Clearing, CR PBX Clearing. DR FBO Intention, CR PBX Intention."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5602
+          ],
+          "event_id": "01960000-0000-7602-8000-000000000003",
+          "event_source": "sweep-engine",
+          "extra_metadata": {
+            "consumer_external_id": "laurence-001",
+            "sweep_batch_id": "intra-rail-batch-001",
+            "direction": "out",
+            "fbo_balance": "755509.34",
+            "network_position": "0.00"
+          },
+          "occurred_at": 1773136050000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "debit_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-00000000f007",
+              "purpose": "credit_clearing"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-0000000ca001",
+              "purpose": "source_intention"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-0000000ca002",
+              "purpose": "destination_intention"
+            }
+          ],
+          "amount": 2500000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4002-a000-00000000f007",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 1
+          },
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050001-0000-4003-a000-0000000ca001",
+            "debit_account_id": "50050001-0000-4003-a000-0000000ca002",
+            "leg_number": 2
+          }
+        ],
+        "name": "intra_rail_laurence_25k_stripe_to_worldpay",
+        "description": "Intra-FBO rail rebalance: move Laurence's $25,000 CB Clearing position from Stripe rail to Worldpay rail. DR Stripe Rail Clearing (11901), CR Worldpay Rail Clearing (11901). DR Worldpay Intention, CR Stripe Intention."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d2161-93f2-7e3e-8abd-3f3234af8357",
+    "state": "DRAFT",
+    "revision": 15,
+    "transition_date": 1774381536242,
+    "content_hash": "sha256:d1a7224ea53957e8af75807807d4a606be58c4c5a3a95797e0daca85ac5ef99c",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

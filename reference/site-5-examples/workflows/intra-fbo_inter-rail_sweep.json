@@ -1,0 +1,141 @@
+{
+  "workflow": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/v1.1.0/workflow.schema.json",
+    "workflow_id": "019ce184-8c02-7cd3-bd8c-30bfebc8f297",
+    "code": "fdic-sweep-intra-rail",
+    "site_id": 5,
+    "name": "Intra-FBO Inter-Rail Sweep",
+    "description": "Moves funds between payment rails within the Master FBO to rebalance per-rail positions. Triggered when the sweep engine detects a customer's per-rail balance is negative or when consolidating balances to a preferred rail. No cash-in-transit involved \u2014 money stays at the same bank throughout. Customer FDIC positions move directly between rail instances.",
+    "require_shared_ledgers": true,
+    "steps": [
+      {
+        "id": "sweep_aggregate_rail",
+        "template_id": 5613,
+        "event_sources": [
+          "sweep-engine"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "aggregation",
+        "depends_on_step_ids": [],
+        "diagram_label": "Aggregate clearing + intention between two FBO rail instances.",
+        "description": "Aggregate clearing + intention between two FBO rail instances.",
+        "trigger": "sweep_engine_identifies_intra_rail_imbalance",
+        "repeat_while": "rail_pairs_remaining_in_sweep_batch",
+        "repeat_while_description": "Repeats for each rail pair in the sweep batch."
+      },
+      {
+        "id": "sweep_customer",
+        "template_id": 5602,
+        "event_sources": [
+          "sweep-engine"
+        ],
+        "examples": [
+          2
+        ],
+        "group": "allocation",
+        "depends_on_step_ids": [
+          "sweep_aggregate_rail"
+        ],
+        "diagram_label": "Per-customer allocation (reused from inter-bank).",
+        "description": "Per-customer allocation (reused from inter-bank).",
+        "trigger": "sweep_engine_per_customer_rail_allocation",
+        "repeat_while": "customers_remaining_in_rail_sweep_batch",
+        "repeat_while_description": "Repeats for each customer in the rail sweep batch."
+      },
+      {
+        "id": "sweep_payment_initiated",
+        "template_id": 5614,
+        "event_sources": [
+          "treasury-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "payment",
+        "depends_on_step_ids": [
+          "sweep_customer"
+        ],
+        "diagram_label": "Reverse intentions after payment instructed.",
+        "description": "Reverse intentions after payment instructed.",
+        "trigger": "intra_rail_payment_instructed"
+      },
+      {
+        "id": "bank_statement_rail",
+        "template_id": 5615,
+        "event_sources": [
+          "bank-statement-feed"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "bank-statements",
+        "depends_on_step_ids": [
+          "sweep_payment_initiated"
+        ],
+        "diagram_label": "Atomic bank statement for both sides.",
+        "description": "Atomic bank statement for both sides.",
+        "trigger": "fbo_intra_rail_bank_statement_received"
+      },
+      {
+        "id": "recon_clearing_rail",
+        "template_id": 5616,
+        "event_sources": [
+          "reconciliation-service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "reconciliation",
+        "depends_on_step_ids": [
+          "bank_statement_rail"
+        ],
+        "diagram_label": "Flush both rail clearing to suspense.",
+        "description": "Flush both rail clearing to suspense.",
+        "trigger": "intra_rail_clearing_matched"
+      },
+      {
+        "id": "recon_bank_payment_rail",
+        "template_id": 5617,
+        "event_sources": [
+          "reconciliation-service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "reconciliation",
+        "depends_on_step_ids": [
+          "recon_clearing_rail"
+        ],
+        "diagram_label": "Flush both rail suspense against control.",
+        "description": "Flush both rail suspense against control.",
+        "trigger": "intra_rail_bank_payment_matched"
+      },
+      {
+        "id": "recon_customer_rail",
+        "template_id": 5618,
+        "event_sources": [
+          "reconciliation-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "reconciliation",
+        "depends_on_step_ids": [
+          "recon_bank_payment_rail",
+          "sweep_customer"
+        ],
+        "diagram_label": "Per-customer FDIC position move between rails.",
+        "description": "Per-customer FDIC position move between rails.",
+        "trigger": "intra_rail_recon_per_customer",
+        "repeat_while": "customers_remaining_in_rail_recon_batch",
+        "repeat_while_description": "Repeats for each customer in the rail recon batch."
+      }
+    ]
+  },
+  "status": "DELETED"
+}

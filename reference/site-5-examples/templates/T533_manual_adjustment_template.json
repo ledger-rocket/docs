@@ -1,0 +1,149 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 533,
+    "name": "Manual Adjustment Template",
+    "description": "Template for manual corrections, reclassifications, or system adjustments. Supports single-leg (net-zero) or dual-leg (net-impact) adjustments.",
+    "financial_statements_impact": [],
+    "category": "ADJUSTMENT",
+    "product": "ACCOUNTING",
+    "event_type": "ADJUSTMENT",
+    "trigger": "manual_adjustment_initiated",
+    "capabilities": [
+      "skip_financial_statements_impact_validation",
+      "skip_account_type_validation"
+    ],
+    "ledger_scope_descriptions": {
+      "primary": "Single ledger scope for adjustments."
+    },
+    "accounting_treatments": [
+      {
+        "type": "adjustment_manual",
+        "policy_refs": [
+          {
+            "id": "IAS8.CORRECTIONS"
+          }
+        ],
+        "description": "Manual correction of errors or reclassifications."
+      },
+      {
+        "type": "system_correction",
+        "policy_refs": [
+          {
+            "id": "IAS8.SYSTEM"
+          }
+        ],
+        "description": "System-driven corrections (e.g., automated reconciliations)."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Source account for adjustment.",
+        "mask": "*",
+        "purpose": "from"
+      },
+      {
+        "description": "Target account for adjustment.",
+        "mask": "*",
+        "purpose": "to"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": true,
+      "properties": {
+        "approver_id": {
+          "description": "ID of the user or system approving the adjustment (required).",
+          "type": "string"
+        },
+        "notes": {
+          "description": "Additional notes or context (optional).",
+          "type": "string"
+        },
+        "original_transaction_id": {
+          "type": "string",
+          "description": "ID of the original transaction being corrected (optional).",
+          "format": "uuid"
+        },
+        "adjustment_reason": {
+          "description": "Detailed reason for the adjustment (required).",
+          "minLength": 10,
+          "type": "string"
+        }
+      },
+      "required": [
+        "adjustment_reason",
+        "approver_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "amount",
+        "credit_account": "accounts.to.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.from.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Transfer adjustment amount from source to target account.",
+        "leg_number": 1,
+        "ledger_scope": "primary",
+        "treatment_type": "adjustment_manual"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            533
+          ],
+          "event_id": "019a5000-0000-7000-8000-000000000001",
+          "event_source": "accounting_adjustment",
+          "extra_metadata": {
+            "adjustment_reason": "Miscoding of invoice INV-2026-03-0012. Confirmed by approver.",
+            "approver_id": "APP-2026-03-0145",
+            "notes": "Reviewed by Finance Team.",
+            "original_transaction_id": "019a4f12-b8cb-7d0d-8c07-4d7a2a3c3bcf"
+          },
+          "occurred_at": 1760000000000,
+          "accounts": [
+            {
+              "account_id": "0076db70-fe2c-5c22-9c1f-a8db49b40299",
+              "purpose": "from"
+            },
+            {
+              "account_id": "00732721-4a5f-5563-b4a6-8565f8865d1a",
+              "purpose": "to"
+            }
+          ],
+          "amount": 50000
+        },
+        "expected_transfers": [
+          {
+            "amount": 50000,
+            "credit_account_id": "00732721-4a5f-5563-b4a6-8565f8865d1a",
+            "debit_account_id": "0076db70-fe2c-5c22-9c1f-a8db49b40299",
+            "leg_number": 1
+          }
+        ],
+        "name": "Manual liability adjustment from Robert Ramirez to Cynthia Baker",
+        "description": "Move $500 from Robert Ramirez's CraftNest Hold liability account to Cynthia Baker's QuickBite Disbursement Payable liability account using real site 5 accounts."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d073a-ed2b-7c79-84a9-374acd101091",
+    "state": "LIVE",
+    "revision": 4,
+    "effective_date": 1773942795563,
+    "transition_date": 1773942795563,
+    "content_hash": "sha256:bd5f292e9106ec0b09fbc2a8d1f7a16b4ce6d4c6d487bf414e8ebd0a15207a7f",
+    "maker": "system@accounting-rule-engine",
+    "checker": "system@accounting-rule-engine",
+    "is_executable": true
+  }
+}

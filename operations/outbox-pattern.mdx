@@ -19,8 +19,8 @@ prepared --> committed --> published
 
 | State | Meaning |
 |-------|---------|
-| `prepared` | Event accepted and validated. Transfers computed but not yet submitted to TigerBeetle. |
-| `committed` | Transfers atomically committed to TigerBeetle. Balances are updated. |
+| `prepared` | Event accepted and validated. Transfers computed but not yet submitted to the financial database. |
+| `committed` | Transfers atomically committed to the financial database. Balances are updated. |
 | `published` | Event envelope published to the Event Store for audit and downstream consumers. Terminal success state. |
 | `failed` | Processing failed at some stage. Requires investigation. |
 
@@ -29,7 +29,7 @@ prepared --> committed --> published
 1. Client POSTs to `/api/v1/events`
 2. Event Service validates the event, resolves accounts, evaluates templates, computes transfers
 3. Event enters `prepared` state
-4. Transfers are submitted atomically to TigerBeetle
+4. Transfers are submitted atomically to the financial database
 5. On success, event transitions to `committed`
 6. Event envelope is published to the Event Store
 7. On success, event transitions to `published`
@@ -38,7 +38,7 @@ The entire flow typically completes in milliseconds. The client receives a respo
 
 ## Retry Behavior
 
-If publishing to the Event Store fails, the outbox retries with exponential backoff. The event remains in `committed` state during retries. Transfers are already committed to TigerBeetle, so balances are correct regardless of publish status.
+If publishing to the Event Store fails, the outbox retries with exponential backoff. The event remains in `committed` state during retries. Transfers are already committed to the financial database, so balances are correct regardless of publish status.
 
 If the Event Service restarts, it scans for events stuck in `prepared` or `committed` states and resumes processing. This is the at-least-once delivery guarantee for the Event Store.
 
@@ -134,11 +134,11 @@ When events are in `failed` state:
    |---------------|-------|------------|
    | Account not found | Account ID does not exist or wrong site | Verify account exists in Ledger Service |
    | Template validation failed | Event metadata does not match template schema | Check `extra_metadata` against template `metadata_schema` |
-   | TigerBeetle rejected transfer | Duplicate event_id or constraint violation | Check for duplicate submission; verify account/ledger setup |
+   | Transfer rejected by storage layer | Duplicate event_id or constraint violation | Check for duplicate submission; verify account/ledger setup |
    | Insufficient balance | Debit exceeds available balance (if constraints enabled) | Verify account has sufficient funds |
 
 4. **After fixing the root cause**, resubmit the event with a new `event_id` (UUIDv7). Do not reuse the failed event's ID.
 
 ## Stuck Event Recovery
 
-If events are stuck in `prepared` or `committed` after a restart, the service should automatically resume processing them. If they remain stuck after multiple restarts, check TigerBeetle connectivity and service logs for errors during the prepare-to-commit or commit-to-publish transitions.
+If events are stuck in `prepared` or `committed` after a restart, the service should automatically resume processing them. If they remain stuck after multiple restarts, check the financial database connectivity and service logs for errors during the prepare-to-commit or commit-to-publish transitions.

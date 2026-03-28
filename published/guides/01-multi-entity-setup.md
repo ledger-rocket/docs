@@ -1,0 +1,218 @@
+# Multi-Entity Ledger Setup
+
+Step-by-step guide to configuring a multi-entity ledger structure in LedgerRocket. This covers site creation, entity registration, ledger provisioning, chart of accounts, account creation, and linked (nostro/vostro) account pairs.
+
+## Prerequisites
+
+- API access to the Ledger Service (`https://ledger.dev.ledgerrocket.com/v2/ledger`)
+- A valid API key (`x-api-key` header)
+
+All examples use the dev environment. Replace the API key with your own.
+
+## 1. Create a Site
+
+A site is the tenant boundary. All data is isolated by `site_id`.
+
+```bash
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: lr-test-20250701" \
+  -d '{
+    "name": "Acme Payments",
+    "description": "Production site for Acme payment platform"
+  }' | jq .
+```
+
+The response includes the `site_id` (a positive integer) used in all subsequent calls.
+
+## 2. Create Entities
+
+Entities represent real-world actors. Each entity can be a beneficial owner, a custodian, or both.
+
+### Platform Company (House Entity)
+
+The platform operator that runs the payment product.
+
+```bash
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/entities \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: lr-test-20250701" \
+  -d '{
+    "name": "Purple Splash Inc.",
+    "entity_type": "COMPANY",
+    "description": "Platform operator and house entity"
+  }' | jq .
+```
+
+### Bank Partner (Custodian)
+
+The bank that holds the FBO (For Benefit Of) account.
+
+```bash
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/entities \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: lr-test-20250701" \
+  -d '{
+    "name": "First National Bank",
+    "entity_type": "COMPANY",
+    "description": "Custodian bank holding FBO accounts"
+  }' | jq .
+```
+
+### Customers
+
+End users whose funds flow through the platform.
+
+```bash
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/entities \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: lr-test-20250701" \
+  -d '{
+    "name": "Jane Doe",
+    "entity_type": "INDIVIDUAL",
+    "description": "Consumer customer"
+  }' | jq .
+```
+
+## 3. Create Ledgers
+
+Each ledger is scoped to one entity and one currency. A typical setup has:
+
+- **Operational ledger** (entity: platform, currency: USD) -- house-level accounting
+- **FDIC tracking ledger** (entity: platform, currency: USD) -- tracks fund locations for insurance
+- **Customer ledgers** -- one per customer+currency if needed
+
+```bash
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/ledgers \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: lr-test-20250701" \
+  -d '{
+    "entity_id": "PLATFORM_ENTITY_UUID",
+    "currency_code": "USD",
+    "name": "Economic Ledger",
+    "description": "Operational on-balance-sheet ledger"
+  }' | jq .
+```
+
+Repeat for the FDIC tracking ledger (same entity, same currency, different name).
+
+## 4. Create Account Codes (Chart of Accounts)
+
+Account codes define the classification structure. They do not hold balances. Typical numbering:
+
+| Range | Type | Purpose |
+|-------|------|---------|
+| 10xxx | ASSET | House assets (settled cash, clearing, control, suspense) |
+| 11xxx | ASSET | Allocation ledger cash balances (FDIC tracking) |
+| 20xxx | LIABILITY | Customer balances (available, hold, pending) |
+| 21xxx | LIABILITY | FDIC tracking customer positions |
+| 30xxx | EQUITY | Platform equity |
+| 50xxx | EXPENSE | Fees, bank charges |
+
+```bash
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/account-codes \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: lr-test-20250701" \
+  -d '{
+    "code": "10100",
+    "name": "Master FBO - Settled",
+    "account_type": "ASSET",
+    "description": "Confirmed bank cash at the FBO account",
+    "has_rollup": true
+  }' | jq .
+```
+
+Key operational account codes:
+
+| Code | Name | Type | Purpose |
+|------|------|------|---------|
+| 10100 | Settled | ASSET | Confirmed bank cash |
+| 10101 | Clearing Total | ASSET | Expected cash from allocation files |
+| 10102 | Control | ASSET | Per-file reconciliation staging |
+| 10103 | Suspense | ASSET | Temporary parking for reconciliation |
+| 10104 | Unallocated | ASSET | Deposits not yet matched to consumers |
+| 20100 | Customer Available | LIABILITY | Spendable customer balance |
+| 20101 | Customer Hold | LIABILITY | Funds reserved pending confirmation |
+| 20102 | Pending Disbursements | LIABILITY | Queued for ACH payout |
+
+## 5. Create Accounts
+
+Accounts hold balances and belong to a ledger. Each account has a beneficial owner (`entity_id`) and optionally a custodian (`custodian_entity_id`).
+
+```bash
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: lr-test-20250701" \
+  -d '{
+    "ledger_id": 5001,
+    "account_code": "10100",
+    "entity_id": "PLATFORM_ENTITY_UUID",
+    "custodian_entity_id": "BANK_ENTITY_UUID",
+    "name": "Master FBO - Settled",
+    "is_rollup": false,
+    "is_presentable": true,
+    "is_internal_gl_only": false
+  }' | jq .
+```
+
+Create per-customer accounts on the operational ledger:
+
+```bash
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: lr-test-20250701" \
+  -d '{
+    "ledger_id": 5001,
+    "account_code": "20100",
+    "entity_id": "CUSTOMER_ENTITY_UUID",
+    "custodian_entity_id": "BANK_ENTITY_UUID",
+    "name": "Jane Doe - Available",
+    "is_rollup": false,
+    "is_presentable": true,
+    "is_internal_gl_only": false
+  }' | jq .
+```
+
+## 6. Set Up Linked Accounts (Nostro/Vostro Pairs)
+
+Linked accounts model the same funds from two perspectives. When the platform holds cash at the bank:
+
+- **Nostro** (platform's view): "Our account at the bank" -- an ASSET on the platform's ledger
+- **Vostro** (bank's view): "Their account with us" -- a LIABILITY on the bank's ledger
+
+In practice, the operational ledger carries the nostro (asset) side and the customer liability side lives on the same ledger. Cross-entity transfers use the `allows_intercompany_transfers` capability on templates.
+
+To link accounts, create both sides referencing the same `external_id` so the reconciliation service can pair them:
+
+```bash
+# Platform-side asset (nostro)
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: lr-test-20250701" \
+  -d '{
+    "ledger_id": 5001,
+    "account_code": "10100",
+    "entity_id": "PLATFORM_ENTITY_UUID",
+    "custodian_entity_id": "BANK_ENTITY_UUID",
+    "name": "Master FBO - Settled (Nostro)",
+    "external_id": "fbo-settled-link-001"
+  }' | jq .
+```
+
+## Verification
+
+After setup, confirm the structure:
+
+```bash
+# List all entities for the site
+curl -s https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/entities \
+  -H "x-api-key: lr-test-20250701" | jq '.[] | {name, entity_type}'
+
+# List all ledgers
+curl -s https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/ledgers \
+  -H "x-api-key: lr-test-20250701" | jq '.[] | {ledger_id, name, currency_code}'
+
+# List account codes
+curl -s https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/account-codes \
+  -H "x-api-key: lr-test-20250701" | jq '.[] | {code, name, account_type}'
+```

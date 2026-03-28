@@ -1,0 +1,216 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5405,
+    "name": "suspense_resolve_unrecognized_credit",
+    "description": "Resolves an orphaned inbound credit sitting in Suspense by debiting the Suspense account and crediting an investigation-identified destination account (e.g., fees offset or income) in the Economic ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Suspense asset is debited to clear the orphaned inbound credit balance.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "primary"
+      },
+      {
+        "account_type": "EXPENSE",
+        "description": "Bank Fees expense is credited, reducing net expense (e.g., fee refund or operational credit offset).",
+        "impact": "decrease_or_no_impact",
+        "ledger_scope": "primary"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "SUSPENSE_ALLOCATION",
+    "trigger": "Investigation identifies the destination for an unrecognized inbound credit previously flushed to Suspense from bank statement ingestion.",
+    "ledger_scope_descriptions": {
+      "primary": "Economic (statutory) ledger for the entity where suspense is maintained and the allocation is recorded (single-ledger USD-only setup)."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          },
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Reclassify an orphaned inbound credit from suspense/clearing to its final destination account once the underlying nature is identified."
+      },
+      {
+        "type": "adjustment_manual",
+        "policy_refs": [
+          {
+            "id": "ASC_250",
+            "version": 1
+          },
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Manual/accounting adjustment used to resolve a suspense anomaly based on investigation outcomes and supporting evidence."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Reconciliation suspense / mixing bowl asset account (Master FBO - Suspense).",
+        "mask": "10103",
+        "purpose": "suspense_account"
+      },
+      {
+        "description": "Bank Fees expense account for resolved credits (fee refunds, operational credits).",
+        "mask": "50100",
+        "purpose": "destination_account"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "credit_description": {
+          "description": "Human-readable description of what the credit represents (e.g., 'bank interest payment', 'fee refund', 'operational credit from bank').",
+          "type": "string"
+        },
+        "bank_statement_reference": {
+          "description": "Reference to the original bank statement line that triggered the suspense entry via Template 4001/4002.",
+          "type": "string"
+        },
+        "approver": {
+          "description": "Name or ID of the approver authorizing this suspense resolution.",
+          "type": "string"
+        },
+        "original_suspense_event_id": {
+          "type": "string",
+          "description": "Optional event ID of the Template 4002 event that created the orphaned suspense entry."
+        },
+        "investigation_reference": {
+          "description": "Reference ID for the investigation that identified the nature of the unrecognized credit.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "investigation_reference",
+        "credit_description",
+        "bank_statement_reference",
+        "approver"
+      ],
+      "type": "object"
+    },
+    "validations": [
+      {
+        "description": "Suspense and destination accounts must be different \u2014 cannot resolve a suspense entry to itself.",
+        "expression": "accounts.suspense_account.account_id != accounts.destination_account.account_id",
+        "name": "accounts_are_distinct"
+      }
+    ],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.destination_account.account_id",
+        "credit_account_type": "EXPENSE",
+        "debit_account": "accounts.suspense_account.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Resolve an orphaned inbound credit from suspense to the investigation-identified destination.",
+        "leg_number": 1,
+        "ledger_scope": "primary",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5405
+          ],
+          "event_id": "0193d000-0000-7000-b000-000000004005",
+          "event_source": "ops_reconciliation",
+          "extra_metadata": {
+            "approver": "jane.smith@purplesplash.com",
+            "bank_statement_reference": "STMT-2026-02-15-CR-0042",
+            "credit_description": "Bank fee refund for February 2026 wire processing fee",
+            "investigation_reference": "INV-2026-0215-001"
+          },
+          "occurred_at": 1760000000000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "suspense_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000009",
+              "purpose": "destination_account"
+            }
+          ],
+          "amount": 2500
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500,
+            "credit_account_id": "50050000-0000-4001-a000-000000000009",
+            "debit_account_id": "50050000-0000-4001-a000-000000000004",
+            "leg_number": 1
+          }
+        ],
+        "name": "bank_fee_refund_25",
+        "description": "A $25.00 bank fee previously charged is refunded by the bank. The credit appeared on the statement with no matching Clearing entry. Investigation identifies it as a fee refund. Suspense is debited and Bank Fees (50100) is credited, reducing the net fee expense."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5405
+          ],
+          "event_id": "0193d000-0000-7000-b000-000000004006",
+          "event_source": "ops_reconciliation",
+          "extra_metadata": {
+            "approver": "john.doe@purplesplash.com",
+            "bank_statement_reference": "STMT-2026-02-20-CR-0099",
+            "credit_description": "Bank operational credit \u2014 FBO account balance adjustment",
+            "investigation_reference": "INV-2026-0220-003",
+            "original_suspense_event_id": "0193c000-0000-7000-b000-000000004002"
+          },
+          "occurred_at": 1760100000000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "suspense_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000009",
+              "purpose": "destination_account"
+            }
+          ],
+          "amount": 15000
+        },
+        "expected_transfers": [
+          {
+            "amount": 15000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000009",
+            "debit_account_id": "50050000-0000-4001-a000-000000000004",
+            "leg_number": 1
+          }
+        ],
+        "name": "bank_operational_credit_150",
+        "description": "A $150.00 operational credit from the bank (e.g., a balance adjustment) appeared on the statement with no matching Clearing entry. Investigation identifies it as a bank-initiated operational credit. Suspense is debited and Bank Fees (50100) is credited as a contra-expense offset."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019cb055-778b-76fe-bcf6-4783eea2a43c",
+    "state": "DRAFT",
+    "revision": 4,
+    "transition_date": 1772484917131,
+    "content_hash": "sha256:2704f4e118346c4f8e70d1528b07cf95427db6e418dc71b771feb8aed9d1475b",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

@@ -1,0 +1,218 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5201,
+    "name": "disbursement_hold_authorization",
+    "description": "Authorization step for a consumer payout request: reserve funds by moving value from Customer-Available (20100) to Customer-Hold (20101) on the Economic Ledger, reducing spendable balance and preventing overdrafts prior to payment-rail interaction.",
+    "financial_statements_impact": [
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability reclassification within customer balances (Customer-Available to Customer-Hold) with no net change to total liabilities.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "primary"
+      }
+    ],
+    "category": "PAYMENTS",
+    "product": "PAYMENTS",
+    "event_type": "TRANSFER",
+    "trigger": "Consumer requests a payout; system places a disbursement hold before initiating ACH/wire/PayPal/push-to-debit.",
+    "ledger_scope_descriptions": {
+      "primary": "Economic (main) ledger scope where customer liability sub-accounts (e.g., available and hold) are recorded."
+    },
+    "accounting_treatments": [
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_405-20",
+            "version": 1
+          }
+        ],
+        "description": "Reclassify consumer funds within customer liabilities from available balance to held/authorized balance; no settlement occurs and total customer liability remains unchanged."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Customer on-balance-sheet deposit liability representing real-time spendable funds per consumer (Customer - Available).",
+        "mask": "20100",
+        "purpose": "consumer_available"
+      },
+      {
+        "description": "Customer on-balance-sheet deposit liability representing funds reserved/held for pending disbursements per consumer (Customer - Hold).",
+        "mask": "20101",
+        "purpose": "consumer_hold"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "disbursement_method": {
+          "description": "Requested disbursement rail/method for the authorized payout.",
+          "type": "string",
+          "enum": [
+            "ACH",
+            "push-to-debit",
+            "PayPal",
+            "wire"
+          ]
+        },
+        "transaction_ref": {
+          "type": "string",
+          "description": "External transaction reference / idempotency key for the payout authorization (e.g. 'payout_auth_01J0...')."
+        },
+        "payout_request_id": {
+          "description": "Identifier of the payout request being authorized/held (e.g. 'pr_12345').",
+          "type": "string"
+        }
+      },
+      "required": [
+        "transaction_ref",
+        "payout_request_id",
+        "disbursement_method"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_hold.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.consumer_available.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Place a hold on the consumer's spendable balance to reserve funds for the pending disbursement.",
+        "leg_number": 1,
+        "ledger_scope": "primary",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5201
+          ],
+          "event_id": "019dded1-3f5b-7b2c-8d7a-3b4f2c1a9e10",
+          "event_source": "api",
+          "extra_metadata": {
+            "transaction_ref": "payout_auth_01JACHHOLD700",
+            "payout_request_id": "pr_100001",
+            "disbursement_method": "ACH"
+          },
+          "occurred_at": 1730316000000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca001",
+              "purpose": "consumer_available"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca002",
+              "purpose": "consumer_hold"
+            }
+          ],
+          "amount": 70000
+        },
+        "expected_transfers": [
+          {
+            "amount": 70000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000ca002",
+            "debit_account_id": "50050000-0000-4001-a000-0000000ca001",
+            "leg_number": 1
+          }
+        ],
+        "name": "ach_hold_700_usd",
+        "description": "Standard ACH disbursement authorization hold for $700.00 (70000 minor units), moving funds from consumer available to consumer hold."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5201
+          ],
+          "event_id": "019dded1-8f6a-74e1-86d5-9d1c0e2b3a44",
+          "event_source": "api",
+          "extra_metadata": {
+            "transaction_ref": "payout_auth_01JP2DHOLD50",
+            "payout_request_id": "pr_100002",
+            "disbursement_method": "push-to-debit"
+          },
+          "occurred_at": 1730316300000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca001",
+              "purpose": "consumer_available"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca002",
+              "purpose": "consumer_hold"
+            }
+          ],
+          "amount": 5000
+        },
+        "expected_transfers": [
+          {
+            "amount": 5000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000ca002",
+            "debit_account_id": "50050000-0000-4001-a000-0000000ca001",
+            "leg_number": 1
+          }
+        ],
+        "name": "push_to_debit_hold_50_usd",
+        "description": "Push-to-debit disbursement authorization hold for $50.00 (5000 minor units), moving funds from consumer available to consumer hold."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5201
+          ],
+          "event_id": "019dded1-e3c1-7f8a-8a3e-7b6c5d4e3f21",
+          "event_source": "api",
+          "extra_metadata": {
+            "transaction_ref": "payout_auth_01JWIRHOLD5000",
+            "payout_request_id": "pr_100003",
+            "disbursement_method": "wire"
+          },
+          "occurred_at": 1730316600000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca001",
+              "purpose": "consumer_available"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca002",
+              "purpose": "consumer_hold"
+            }
+          ],
+          "amount": 500000
+        },
+        "expected_transfers": [
+          {
+            "amount": 500000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000ca002",
+            "debit_account_id": "50050000-0000-4001-a000-0000000ca001",
+            "leg_number": 1
+          }
+        ],
+        "name": "wire_hold_5000_usd",
+        "description": "Wire disbursement authorization hold for $5,000.00 (500000 minor units), moving funds from consumer available to consumer hold."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019cb055-0f7f-763f-b4d3-c34a3a4511e5",
+    "state": "DRAFT",
+    "revision": 6,
+    "transition_date": 1772484890495,
+    "content_hash": "sha256:41c4997c456fc91b6409ebc1fba59b9e3859fc78a97ca23ded8fa75e6b1e5fb5",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

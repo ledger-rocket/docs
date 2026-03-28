@@ -1,0 +1,140 @@
+# CEL Expressions
+
+Templates use the [Common Expression Language (CEL)](https://github.com/google/cel-spec), an expression language created by Google. CEL expressions appear in two places within a template:
+
+- **Variables**: compute values from event data (`"value": "event.amount * 3 / 100"`)
+- **Validations**: assert business rules (`"expression": "event.amount > 0"`)
+
+Legs do **not** contain CEL expressions. Leg fields are pure references to variables or direct selectors.
+
+## Available Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `int` | 64-bit signed integer | `42`, `event.amount` |
+| `string` | Unicode text | `"hello"`, `event.extra_metadata.approver` |
+| `bool` | Boolean | `true`, `false`, `event.amount > 0` |
+| `list` | Ordered collection | `[1, 2, 3]` |
+| `map` | Key-value pairs | `{"key": "value"}` |
+
+## Integer-Only Arithmetic
+
+All monetary amounts in LedgerRocket are **integer minor units** (cents, satoshis, etc.). CEL expressions for financial calculations must use integer arithmetic exclusively.
+
+```text
+event.amount * 3 / 100          -- 3% fee (integer division)
+event.amount * 250 / 10000      -- 2.5% in basis points
+event.amount - fee_amount       -- remainder after fee
+```
+
+Never use floating-point numbers for money. There is no float type available in the template CEL environment.
+
+## Accessing Event Fields
+
+CEL expressions can access the following fields from the incoming event:
+
+### Event Amount
+
+```text
+event.amount                    -- the event's monetary amount (integer minor units)
+```
+
+### Account Fields
+
+Accounts are accessed by their purpose name (defined in `account_code_validations`):
+
+```text
+accounts.bank_fees_account.account_id         -- UUID of the bank fees account
+accounts.suspense_account.account_id          -- UUID of the suspense account
+accounts.control_account.account_code.code    -- account code string (e.g., "10102")
+```
+
+The general pattern is:
+
+```text
+accounts.{purpose}.account_id            -- account UUID
+accounts.{purpose}.account_code.code     -- account code string
+```
+
+### Extra Metadata Fields
+
+```text
+event.extra_metadata.approver                -- string metadata field
+event.extra_metadata.investigation_reference -- string metadata field
+event.extra_metadata.anomaly_type            -- string metadata field
+```
+
+### Referencing Prior Variables
+
+Variables are evaluated in declaration order. Later variables can reference earlier ones by name:
+
+```text
+-- Given variables declared in order:
+--   fee_amount = event.amount * 3 / 100
+--   net_amount = event.amount - fee_amount
+
+fee_amount    -- references the first variable's computed value
+net_amount    -- references the second variable's computed value
+```
+
+## Operators
+
+### Arithmetic
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `+` | Addition | `event.amount + 100` |
+| `-` | Subtraction | `event.amount - fee` |
+| `*` | Multiplication | `event.amount * 3` |
+| `/` | Integer division | `event.amount / 100` |
+| `%` | Modulo (remainder) | `event.amount % 100` |
+
+### Comparison
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `==` | Equal | `event.amount == 0` |
+| `!=` | Not equal | `accounts.debit.account_code.code != accounts.credit.account_code.code` |
+| `<` | Less than | `event.amount < 100000` |
+| `>` | Greater than | `event.amount > 0` |
+| `<=` | Less than or equal | `fee <= event.amount` |
+| `>=` | Greater than or equal | `event.amount >= 100` |
+
+### Logical
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `&&` | Logical AND | `event.amount > 0 && event.amount < 1000000` |
+| `\|\|` | Logical OR | `a > 0 \|\| b > 0` |
+| `!` | Logical NOT | `!is_internal` |
+
+## String Functions
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `size()` | String length | `event.extra_metadata.approver.size() > 0` |
+| `contains()` | Substring check | `event.extra_metadata.ref.contains("ACH")` |
+| `startsWith()` | Prefix check | `event.extra_metadata.ref.startsWith("WIRE-")` |
+| `endsWith()` | Suffix check | `event.extra_metadata.file.endsWith(".csv")` |
+
+## Conditional Expressions
+
+The ternary operator selects between two values based on a condition:
+
+```text
+condition ? true_value : false_value
+```
+
+Example -- apply a different fee rate based on amount:
+
+```text
+event.amount > 100000 ? event.amount * 2 / 100 : event.amount * 3 / 100
+```
+
+## Important Constraints
+
+1. **No floats for money.** All monetary calculations use integer arithmetic. Use basis points (`amount * bps / 10000`) for percentage calculations.
+2. **No fallback operators on monetary amounts.** Expressions like `amount ?? 0` or `amount || 0` are forbidden.
+3. **No zero substitution.** Never substitute zero for a missing financial value.
+4. **Expression length limit.** CEL expressions have a maximum length of 1000 characters.
+5. **Variable name limit.** Variable and validation names have a maximum length of 100 characters.

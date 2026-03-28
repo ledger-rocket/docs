@@ -1,0 +1,213 @@
+{
+  "template": {
+    "$schema": "",
+    "site_id": 5,
+    "template_id": 5403,
+    "name": "suspense_resolve_bank_fee",
+    "description": "Manually resolve an investigated orphaned Suspense balance identified as a bank service charge by debiting Bank Fees expense and crediting Suspense in the Economic ledger, with required investigation and approval metadata.",
+    "financial_statements_impact": [
+      {
+        "account_type": "EXPENSE",
+        "description": "Bank service charge recognized: bank fees expense increases by the allocated fee amount.",
+        "impact": "increase",
+        "ledger_scope": "economic"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Suspense asset is credited to clear the orphaned balance, decreasing the suspense asset position.",
+        "impact": "decrease_or_no_impact",
+        "ledger_scope": "economic"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "SUSPENSE_ALLOCATION",
+    "trigger": "Operations analyst approves clearing an aged orphaned Suspense balance that has been investigated and identified as a bank fee.",
+    "ledger_scope_descriptions": {
+      "economic": "Economic on-balance-sheet ledger (Economic Ledger 5001) where reconciliation suspense and bank fee expense are recorded."
+    },
+    "accounting_treatments": [
+      {
+        "type": "accrual_non_interest",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          },
+          {
+            "id": "ASC_250",
+            "version": 1
+          }
+        ],
+        "description": "Recognize bank service charges as non-interest expense in the period identified during reconciliation and reclassify/clear the suspense holding balance accordingly."
+      },
+      {
+        "type": "adjustment_manual",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          },
+          {
+            "id": "ASC_250",
+            "version": 1
+          }
+        ],
+        "description": "Manual, approved reconciliation adjustment to resolve an orphaned suspense item by allocating it to the appropriate expense account."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Bank Fees expense (partner bank service charges).",
+        "mask": "50100",
+        "purpose": "bank_fees_account"
+      },
+      {
+        "description": "Reconciliation suspense / mixing bowl asset account (Master FBO - Suspense).",
+        "mask": "10103",
+        "purpose": "suspense_account"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "original_suspense_event_id": {
+          "format": "uuid",
+          "description": "Event ID (UUID) of the original suspense-creating event being resolved.",
+          "type": "string"
+        },
+        "anomaly_type": {
+          "description": "Classification of the suspense anomaly being resolved (must be BANK_FEE).",
+          "type": "string",
+          "enum": [
+            "BANK_FEE"
+          ]
+        },
+        "investigation_reference": {
+          "maxLength": 200,
+          "description": "Reference to the investigation ticket/document supporting this allocation (e.g., JIRA-12345).",
+          "type": "string",
+          "minLength": 1
+        },
+        "approver": {
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Identifier of the approving operations analyst (name or ID).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "anomaly_type",
+        "investigation_reference",
+        "approver",
+        "original_suspense_event_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.suspense_account.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.bank_fees_account.account_id",
+        "debit_account_type": "EXPENSE",
+        "description": "Recognize the orphaned suspense balance as a bank service charge; clears suspense and records the expense.",
+        "leg_number": 1,
+        "ledger_scope": "economic",
+        "treatment_type": "adjustment_manual"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5403
+          ],
+          "event_id": "018f3f0b-4a6f-7b31-9a7a-2b9b1d2a5c01",
+          "event_source": "api",
+          "extra_metadata": {
+            "anomaly_type": "BANK_FEE",
+            "investigation_reference": "JIRA-18422",
+            "approver": "ops_analyst_17",
+            "original_suspense_event_id": "550e8400-e29b-41d4-a716-446655440001"
+          },
+          "occurred_at": 1705315800000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000009",
+              "purpose": "bank_fees_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "suspense_account"
+            }
+          ],
+          "amount": 2500
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500,
+            "credit_account_id": "50050000-0000-4001-a000-000000000004",
+            "debit_account_id": "50050000-0000-4001-a000-000000000009",
+            "leg_number": 1
+          }
+        ],
+        "name": "wire_fee_resolution_25_usd",
+        "description": "$25.00 wire transfer fee identified in suspense and approved by ops analyst; reclassified to Bank Fees expense and clears suspense."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5403
+          ],
+          "event_id": "018f3f0b-4a6f-7b31-9a7a-2b9b1d2a5c02",
+          "event_source": "api",
+          "extra_metadata": {
+            "anomaly_type": "BANK_FEE",
+            "investigation_reference": "JIRA-19105",
+            "approver": "ops_analyst_17",
+            "original_suspense_event_id": "550e8400-e29b-41d4-a716-446655440002"
+          },
+          "occurred_at": 1707994200000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000009",
+              "purpose": "bank_fees_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "suspense_account"
+            }
+          ],
+          "amount": 1500
+        },
+        "expected_transfers": [
+          {
+            "amount": 1500,
+            "credit_account_id": "50050000-0000-4001-a000-000000000004",
+            "debit_account_id": "50050000-0000-4001-a000-000000000009",
+            "leg_number": 1
+          }
+        ],
+        "name": "account_maintenance_fee_resolution_15_usd",
+        "description": "$15.00 monthly account maintenance fee identified in suspense and approved by ops analyst; reclassified to Bank Fees expense and clears suspense."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019cb055-67e4-7ac1-b93a-aece8e755200",
+    "state": "DRAFT",
+    "revision": 3,
+    "transition_date": 1772484913124,
+    "content_hash": "sha256:a4042af7a68084553df639e3441107405a193557c1405cb8fca2e390c963b2f4",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

@@ -1,0 +1,223 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5618,
+    "name": "sweep_recon_customer_rail",
+    "description": "Intra-FBO inter-rail sweep per-customer reconciliation: move customer FDIC position (21100) between rail instances and flush CB clearing (11901) to CB suspense (11903) for both rails. No cash-in-transit. Three legs on the allocation ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: CB clearing flushed to CB suspense for both rail instances. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "allocation_ledger"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability-to-liability reclassification: customer FBO position moves from source rail to dest rail. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "allocation_ledger"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation service per-customer intra-rail recon.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "allocation_ledger": "Allocation ledger (ID 5002) where per-customer FDIC positions move between rail instances and clearing is flushed to suspense."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Flush per-customer CB clearing to CB suspense for both rail instances."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Move customer FDIC position directly between rail instances of 21100."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Source rail CB Clearing; debited to flush.",
+        "mask": "11901",
+        "purpose": "source_cb_clearing"
+      },
+      {
+        "description": "Source rail CB Suspense; credited to receive.",
+        "mask": "11903",
+        "purpose": "source_cb_suspense"
+      },
+      {
+        "description": "Dest rail CB Suspense; debited (reverse direction).",
+        "mask": "11903",
+        "purpose": "dest_cb_suspense"
+      },
+      {
+        "description": "Dest rail CB Clearing; credited (reverse direction).",
+        "mask": "11901",
+        "purpose": "dest_cb_clearing"
+      },
+      {
+        "description": "Source rail customer FBO position; credited (position leaves source).",
+        "mask": "21100",
+        "purpose": "source_customer_fbo"
+      },
+      {
+        "description": "Dest rail customer FBO position; debited (position arrives at dest).",
+        "mask": "21100",
+        "purpose": "dest_customer_fbo"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "recon_id": {
+          "type": "string",
+          "description": "Reconciliation event identifier.",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "consumer_external_id": {
+          "minLength": 1,
+          "type": "string",
+          "description": "External ID of the customer being reconciled.",
+          "maxLength": 100
+        }
+      },
+      "required": [
+        "recon_id",
+        "consumer_external_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.source_cb_suspense.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.source_cb_clearing.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Flush source rail CB clearing to suspense.",
+        "leg_number": 1,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.dest_cb_clearing.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.dest_cb_suspense.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Flush dest rail CB suspense to clearing (reverse direction).",
+        "leg_number": 2,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.source_customer_fbo.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.dest_customer_fbo.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Move customer FDIC position from source rail to dest rail.",
+        "leg_number": 3,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5618
+          ],
+          "event_id": "01960000-0000-7618-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-cust-intra-001",
+            "consumer_external_id": "cust-a-ext-001"
+          },
+          "occurred_at": 1773309000000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4002-a000-00000000f007",
+              "purpose": "source_cb_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-00000000f011",
+              "purpose": "source_cb_suspense"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011903",
+              "purpose": "dest_cb_suspense"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "dest_cb_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000fca002",
+              "purpose": "source_customer_fbo"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca001",
+              "purpose": "dest_customer_fbo"
+            }
+          ],
+          "amount": 2500000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4002-a000-00000000f011",
+            "debit_account_id": "50050000-0000-4002-a000-00000000f007",
+            "leg_number": 1
+          },
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011901",
+            "debit_account_id": "50050000-0000-4002-a000-000000011903",
+            "leg_number": 2
+          },
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4002-a000-000000fca002",
+            "debit_account_id": "50050000-0000-4002-a000-0000000ca001",
+            "leg_number": 3
+          }
+        ],
+        "name": "intra_rail_recon_customer_a_worldpay_to_stripe_25k",
+        "description": "Per-customer recon: move Customer A's $25,000 FDIC position from Worldpay to Stripe rail, flush CB clearing to suspense on both sides."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d034a-9cfb-777a-ab89-67c98c1636c4",
+    "state": "DRAFT",
+    "revision": 4,
+    "transition_date": 1773876714747,
+    "content_hash": "sha256:c336db80410eb816415ce1cd4ddc8a0d77d07c8c0b542d74a3acbf1289fdfeb5",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

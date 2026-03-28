@@ -314,7 +314,7 @@ curl -s "$EVENT_URL/api/v1/sites/$SITE_ID/templates/532" \
 
 ## Step 7: Submit an Event
 
-Submit a financial event that references your template and accounts. The Event Service resolves accounts, evaluates the template, and atomically writes the resulting transfers to TigerBeetle.
+Submit a financial event that references your template and accounts. The Event Service resolves accounts, evaluates the template, and atomically writes the resulting transfers.
 
 The `event_id` must be a UUIDv7 (time-ordered). It also serves as the idempotency key -- safe to retry on failure.
 

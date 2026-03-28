@@ -1,0 +1,203 @@
+{
+  "template": {
+    "$schema": "",
+    "site_id": 5,
+    "template_id": 5207,
+    "name": "disbursement_ach_return_detail",
+    "description": "Record a per-customer return detail line from an ACH return file. Draws down the per-file ACH Clearing Files (10104) balance and parks the returned amount in Unallocated Customer (20900) for later matching by the reconciliation service (T5209). FDIC mirror on allocation ledger moves Cash Balances - Clearing (11901) to Unallocated Customer - Master FBO (21900).",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Per-file ACH Clearing Files (10104) is debited (drawing down the return file clearing balance) on the economic ledger.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Unallocated Customer (20900) is credited (parking the returned amount for later matching) on the economic ledger.",
+        "impact": "increase",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Cash Balances - Clearing (11901) is debited on the allocation ledger.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Unallocated Customer - Master FBO (21900) is credited on the allocation ledger.",
+        "impact": "increase",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "DISBURSEMENTS",
+    "product": "DISBURSEMENTS",
+    "event_type": "TRANSFER",
+    "trigger": "ACH return file received, per-customer return detail line. Fires once per return line item in a return file.",
+    "ledger_scope_descriptions": {
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where the FDIC mirror moves Cash Balances - Clearing to Unallocated Customer - Master FBO.",
+      "operational": "Operational ledger (ID 5001) where the return detail draws down per-file clearing and parks in Unallocated Customer."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Draw down the per-file ACH clearing balance with the returned amount and park in Unallocated Customer for later matching."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Mirror the return on the allocation ledger for FDIC fund-location tracking."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Per-file ACH Clearing Files instance being drawn down by this return detail line.",
+        "mask": "10104",
+        "purpose": "clearing_per_file"
+      },
+      {
+        "description": "Unallocated Customer - Disbursement Returns; credited with the returned amount for later matching.",
+        "mask": "20900",
+        "purpose": "unallocated_customer"
+      },
+      {
+        "description": "Cash Balances - Master FBO Clearing on the allocation ledger.",
+        "mask": "11901",
+        "purpose": "cash_balances_clearing"
+      },
+      {
+        "description": "Unallocated Customer - Master FBO on the allocation ledger.",
+        "mask": "21900",
+        "purpose": "unallocated_fbo"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "ach_file_id": {
+          "minLength": 1,
+          "type": "string",
+          "description": "ACH return file reference used to select the per-file ACH Clearing Files (10104) instance being drawn down.",
+          "maxLength": 100
+        },
+        "consumer_external_id": {
+          "minLength": 1,
+          "type": "string",
+          "description": "Consumer entity external identifier from the return file.",
+          "maxLength": 100
+        },
+        "original_disbursement_event_id": {
+          "maxLength": 100,
+          "type": "string",
+          "description": "Links back to the original T5204 event for traceability."
+        }
+      },
+      "required": [
+        "ach_file_id",
+        "consumer_external_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.unallocated_customer.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.clearing_per_file.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Draw down the per-file ACH clearing balance and park the returned amount in Unallocated Customer.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.unallocated_fbo.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.cash_balances_clearing.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the return on the allocation ledger for FDIC fund-location tracking.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5207
+          ],
+          "event_id": "01952070-0000-7207-8000-000000000001",
+          "event_source": "payment-gateway",
+          "extra_metadata": {
+            "ach_file_id": "ach-return-2026-03-02-001",
+            "consumer_external_id": "cust-a-001"
+          },
+          "occurred_at": 1772617600000,
+          "accounts": [
+            {
+              "account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+              "purpose": "clearing_per_file"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000020901",
+              "purpose": "unallocated_customer"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "cash_balances_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000021901",
+              "purpose": "unallocated_fbo"
+            }
+          ],
+          "amount": 20000
+        },
+        "expected_transfers": [
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4001-a000-000000020901",
+            "debit_account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+            "leg_number": 1
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4002-a000-000000021901",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 2
+          }
+        ],
+        "name": "return_detail_cust_a_200",
+        "description": "Customer A's $200.00 ACH return from file ach-return-2026-03-02-001. Draws down per-file clearing, parks in Unallocated Customer."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d21b9-1e53-70b4-8b92-afb1b5f52c35",
+    "state": "DRAFT",
+    "revision": 10,
+    "transition_date": 1774387273299,
+    "content_hash": "sha256:2ac596958c1e0d823dbbd5ea4b11351cec5e3fc85398ffb6b6b2096e49eeb7df",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

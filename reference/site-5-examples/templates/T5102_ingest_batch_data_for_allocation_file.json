@@ -1,0 +1,142 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5102,
+    "name": "Ingest batch data for allocation file",
+    "description": "When an allocation file is received, the file totals are added to the main Clearing account and the file specific account for consistency checks",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification within Master FBO - Clearing (10101): Clearing Total debit balance increases and the per-file Clearing instance credit balance increases equally. Total economic ledger assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "economic_ledger"
+      }
+    ],
+    "category": "DEPOSITS",
+    "product": "DEPOSITS",
+    "event_type": "TRANSFER",
+    "trigger": "An allocation file arrives and passes validation. Fires once per allocation file before any per-consumer allocation events (T5101) for that file.",
+    "ledger_scope_descriptions": {
+      "economic_ledger": "Economic ledger (ID 5001) where the batch header establishes the per-file clearing balance under Master FBO - Clearing (10101)."
+    },
+    "accounting_treatments": [
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Establish the per-file clearing balance by transferring the file total from the permanent Clearing Total to a per-file Clearing instance; no P&L impact."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Permanent accumulator account (Master FBO - Clearing Total) on the economic ledger; debited once per allocation file for the file total.",
+        "mask": "10101",
+        "purpose": "clearing_total"
+      },
+      {
+        "description": "Per-file clearing instance (Master FBO - Clearing) on the economic ledger; credited with the file total, then drawn down to zero by per-consumer allocation events (T5101 leg 1).",
+        "mask": "10101",
+        "purpose": "clearing_per_file"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "statement_file_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Bank statement file reference linking this allocation file to the corresponding bank statement whose Master FBO Control (10102) instance carries the batch balance."
+        },
+        "expected_line_count": {
+          "description": "Number of consumer line items expected in this allocation file, for monitoring and reconciliation.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "allocation_file_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Allocation file reference used to create/select the per-file Clearing (10101) instance and for batch traceability."
+        }
+      },
+      "required": [
+        "allocation_file_id",
+        "statement_file_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [
+      {
+        "description": "Static: Master FBO - Clearing Total (10101) \u2014 single permanent accumulator, always the same.",
+        "name": "clearing_total",
+        "value": "50050000-0000-4001-a000-000000101001"
+      }
+    ],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.clearing_per_file.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.clearing_total.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Establish per-file clearing balance from the allocation file total.",
+        "leg_number": 1,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5102
+          ],
+          "event_id": "01952000-0000-7001-8000-000000000010",
+          "event_source": "api",
+          "extra_metadata": {
+            "allocation_file_id": "alloc-2026-02-23-001",
+            "statement_file_id": "stmt-2026-02-23-A",
+            "expected_line_count": 2
+          },
+          "occurred_at": 1771804790000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000002",
+              "purpose": "clearing_per_file"
+            }
+          ],
+          "amount": 1000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 1000000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000002",
+            "debit_account_id": "50050000-0000-4001-a000-000000101001",
+            "leg_number": 1
+          }
+        ],
+        "name": "batch_header_10k",
+        "description": "Batch header for a $10,000.00 allocation file (alloc-2026-02-23-001) linked to bank statement stmt-2026-02-23-A, with 2 expected consumer line items ($8k Customer A + $2k Customer B)."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019caf15-e72e-7aa8-b8bc-63b4ce2cd427",
+    "state": "DRAFT",
+    "revision": 9,
+    "transition_date": 1772463974190,
+    "content_hash": "sha256:8e72119eb49844fa1d6b4b89c9f44e09b829e5e4a5517599e8b53f80660d4b51",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

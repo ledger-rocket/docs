@@ -1,0 +1,188 @@
+{
+  "template": {
+    "$schema": "",
+    "site_id": 5,
+    "template_id": 5212,
+    "name": "recon_disbursement_bank_payment",
+    "description": "Flush the Control balance through Suspense, completing the disbursement reconciliation cycle. Debit Suspense (10103) and credit Control (10102) on the economic ledger, with a mirror of Cash Balances - Suspense (11903) to Cash Balances - Control (11902) on the allocation ledger. After this fires, all temporary accounts (Clearing, Control, Suspense) net to zero for the matched amount. Structurally identical to UC1's T5407 (control flush).",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on the economic ledger: Suspense (10103) decreases and Control (10102) decreases. Total assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on the allocation ledger: Cash Balances - Suspense (11903) decreases and Cash Balances - Control (11902) decreases. Total assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation service matches the bank statement against Suspense. Fires once per bank statement match.",
+    "ledger_scope_descriptions": {
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where Cash Balances - Suspense is flushed against Cash Balances - Control for FDIC tracking.",
+      "operational": "Operational ledger (ID 5001) where Suspense is flushed against Control to complete reconciliation."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          },
+          {
+            "id": "IFRS_9",
+            "version": 1
+          }
+        ],
+        "description": "Flush Suspense against Control to complete the disbursement reconciliation cycle."
+      },
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Mirror the control flush on the allocation ledger for FDIC position tracking."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Master FBO - Suspense on the economic ledger; debited to flush against Control.",
+        "mask": "10103",
+        "purpose": "suspense"
+      },
+      {
+        "description": "Master FBO - Control on the economic ledger; credited to complete reconciliation.",
+        "mask": "10102",
+        "purpose": "control"
+      },
+      {
+        "description": "Cash Balances - Master FBO Suspense on the allocation ledger; debited to flush.",
+        "mask": "11903",
+        "purpose": "cash_balances_suspense"
+      },
+      {
+        "description": "Cash Balances - Master FBO Control on the allocation ledger; credited to complete.",
+        "mask": "11902",
+        "purpose": "cash_balances_control"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "ach_file_id": {
+          "description": "ACH file for traceability.",
+          "maxLength": 100,
+          "type": "string"
+        },
+        "statement_file_id": {
+          "type": "string",
+          "description": "Bank statement file being reconciled.",
+          "maxLength": 100,
+          "minLength": 1
+        }
+      },
+      "required": [
+        "statement_file_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.control.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.suspense.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Flush Suspense against Control to complete the reconciliation cycle.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cash_balances_control.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.cash_balances_suspense.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the control flush on the allocation ledger for FDIC tracking.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5212
+          ],
+          "event_id": "01952120-0000-7212-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "statement_file_id": "FBO-STMT-2026-03-02",
+            "ach_file_id": "ach-disb-2026-03-01-001"
+          },
+          "occurred_at": 1772704300000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "suspense"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011903",
+              "purpose": "cash_balances_suspense"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "cash_balances_control"
+            }
+          ],
+          "amount": 30000
+        },
+        "expected_transfers": [
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000003",
+            "debit_account_id": "50050000-0000-4001-a000-000000000004",
+            "leg_number": 1
+          },
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011902",
+            "debit_account_id": "50050000-0000-4002-a000-000000011903",
+            "leg_number": 2
+          }
+        ],
+        "name": "recon_bank_payment_300",
+        "description": "Reconcile $300.00 bank statement: flush Suspense against Control on economic; flush CB Suspense against CB Control on allocation. Completes the reconciliation cycle."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c2b-e65b-7b6f-ac4a-383d65deb96f",
+    "state": "DRAFT",
+    "revision": 9,
+    "transition_date": 1774294132315,
+    "content_hash": "sha256:d01e0c371f8d962858579e501fd9997c6e6da0797f30ec4974703b783ca6750c",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

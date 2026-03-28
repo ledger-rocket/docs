@@ -1,0 +1,242 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5406,
+    "name": "control_orphan_resolution",
+    "description": "Resolves an orphaned Control per-file residual (no matching Clearing entry) by moving the amount through Suspense and allocating it to a parameterized destination account (e.g., bank fees) after investigation approval, clearing Control and netting Suspense to zero.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Control asset is credited in Leg 1 (clearing the per-file residual); Suspense is debited in Leg 1 and credited in Leg 2 for equal amounts, netting to zero. Net ASSET impact is a decrease equal to the Control credit.",
+        "impact": "decrease",
+        "ledger_scope": "primary"
+      },
+      {
+        "account_type": "EXPENSE",
+        "description": "Destination account (e.g., bank fees) is debited in Leg 2, increasing expenses by the allocated amount.",
+        "impact": "increase",
+        "ledger_scope": "primary"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "SUSPENSE_ALLOCATION",
+    "trigger": "Matching/reconciliation identifies a Control per-file residual with no Clearing counterpart; investigation confirms legitimacy and assigns accounting treatment.",
+    "ledger_scope_descriptions": {
+      "primary": "Economic/primary ledger (e.g., economic ledger 5001) where suspense, control clearing, and destination account postings are recorded."
+    },
+    "accounting_treatments": [
+      {
+        "type": "adjustment_manual",
+        "policy_refs": [
+          {
+            "id": "ASC_250",
+            "version": 1
+          },
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Manual/operational correction to reclass an orphaned per-file Control residual into Suspense and allocate it to the appropriate destination account based on investigation and reconciliation evidence."
+      },
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          },
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Use of Suspense/Control as clearing accounts within the economic ledger to temporarily hold and then clear identified orphaned items; suspense is fully cleared after allocation."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Bank statement control / blind ingestion per-file instance (Master FBO - Control).",
+        "mask": "10102",
+        "purpose": "control_account"
+      },
+      {
+        "description": "Destination expense account when allocation represents bank fees (Bank Fees).",
+        "mask": "50100",
+        "purpose": "destination_account"
+      },
+      {
+        "description": "Suspense/mixing-bowl clearing asset used to temporarily hold and then clear orphaned items (Master FBO - Suspense).",
+        "mask": "10103",
+        "purpose": "suspense_account"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "approver": {
+          "type": "string",
+          "description": "Identity of the approver who signed off on the resolution."
+        },
+        "original_control_event_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Event ID (UUID) of the original Control entry being resolved."
+        },
+        "anomaly_type": {
+          "type": "string",
+          "description": "Classification of the orphan/residual (e.g., \"bank_fee\", \"regulatory_garnishment\", \"external_funds_movement\")."
+        },
+        "investigation_reference": {
+          "type": "string",
+          "description": "Reference ID from the investigation/case management system."
+        }
+      },
+      "required": [
+        "anomaly_type",
+        "investigation_reference",
+        "approver",
+        "original_control_event_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.control_account.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.suspense_account.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Flush orphaned per-file Control residual into Suspense clearing account.",
+        "leg_number": 1,
+        "ledger_scope": "primary",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.suspense_account.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.destination_account.account_id",
+        "debit_account_type": "EXPENSE",
+        "description": "Allocate Suspense balance to final destination account (e.g., bank fees), clearing Suspense.",
+        "leg_number": 2,
+        "ledger_scope": "primary",
+        "treatment_type": "adjustment_manual"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5406
+          ],
+          "event_id": "018de3c5-6a5c-7b3c-8e31-5d1a9fe6a7b1",
+          "event_source": "api",
+          "extra_metadata": {
+            "anomaly_type": "bank_fee_monthly_maintenance",
+            "approver": "ops_manager:julia.nguyen",
+            "investigation_reference": "CASE-PSB-2025-001923",
+            "original_control_event_id": "a7d0c0f7-2f3e-4a8b-9e55-2e0d7b5d0a2c"
+          },
+          "occurred_at": 1730150400000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000009",
+              "purpose": "destination_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "suspense_account"
+            }
+          ],
+          "amount": 2500
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500,
+            "credit_account_id": "50050000-0000-4001-a000-000000000003",
+            "debit_account_id": "50050000-0000-4001-a000-000000000004",
+            "leg_number": 1
+          },
+          {
+            "amount": 2500,
+            "credit_account_id": "50050000-0000-4001-a000-000000000004",
+            "debit_account_id": "50050000-0000-4001-a000-000000000009",
+            "leg_number": 2
+          }
+        ],
+        "name": "bank_initiated_fee_debit_25_usd",
+        "description": "A $25.00 monthly maintenance fee appears on the bank statement with no Clearing counterpart. Investigation confirms it is legitimate. The orphaned residual is cleared from Control into Suspense, then allocated to Bank Fees (50100)."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5406
+          ],
+          "event_id": "018de3c5-6a5c-7d21-92c6-3f3c3f5a9c42",
+          "event_source": "api",
+          "extra_metadata": {
+            "anomaly_type": "regulatory_garnishment",
+            "approver": "compliance_lead:marcus.owens",
+            "investigation_reference": "CASE-PSB-2025-002104",
+            "original_control_event_id": "f3c1e1a2-9b46-4f8c-8a9e-7f6b8a9c0d1e"
+          },
+          "occurred_at": 1730413200000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000009",
+              "purpose": "destination_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "suspense_account"
+            }
+          ],
+          "amount": 50000
+        },
+        "expected_transfers": [
+          {
+            "amount": 50000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000003",
+            "debit_account_id": "50050000-0000-4001-a000-000000000004",
+            "leg_number": 1
+          },
+          {
+            "amount": 50000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000004",
+            "debit_account_id": "50050000-0000-4001-a000-000000000009",
+            "leg_number": 2
+          }
+        ],
+        "name": "regulatory_garnishment_500_usd_allocated_to_bank_fees",
+        "description": "A $500.00 regulatory garnishment appears on the bank statement and is confirmed legitimate. The allocation is booked to Bank Fees (50100) as the parameterized destination, clearing Suspense."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019caf02-89a0-7af9-976b-539a7f5cc8eb",
+    "state": "DRAFT",
+    "revision": 3,
+    "transition_date": 1772462705056,
+    "content_hash": "sha256:509ae1628b3571f7b386a941bebf0ef979b6949c6b6151043e112573599c2888",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

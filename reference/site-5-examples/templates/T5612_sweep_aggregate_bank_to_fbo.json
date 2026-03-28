@@ -1,0 +1,181 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5612,
+    "name": "sweep_aggregate_bank_to_fbo",
+    "description": "UC6 Step 1: Creates intention and expected movements of cash from a program bank to Master FBO at aggregate level. Debit Master FBO Clearing Total (10101) and credit program bank clearing (10201) on the economic ledger. Debit Master FBO Intention (8100) and credit program bank intention (8200) on the intention ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: Master FBO Clearing Total debited, PBX Clearing credited. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "economic_ledger"
+      },
+      {
+        "account_type": "SUPPLEMENTAL",
+        "description": "Supplemental-to-supplemental reclassification: Master FBO Intention debited, PBX Intention credited. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "intention_ledger"
+      }
+    ],
+    "category": "SWEEP",
+    "product": "FDIC_SWEEP",
+    "event_type": "TRANSFER",
+    "trigger": "Sweep job identifies required movement of a program bank to Master FBO.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "economic_ledger": "Economic ledger (ID 5001) where aggregate clearing positions are created for both banks.",
+      "intention_ledger": "Intention ledger (ID 5003) where sweep intentions are queued for both banks."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Create expected clearing positions for inter-bank sweep at aggregate level from a program bank to Master FBO."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Queue sweep intention from a program bank to Master FBO."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Program bank clearing asset; credited to create expected outbound cash movement.",
+        "mask": "10201",
+        "purpose": "pbx_clearing"
+      },
+      {
+        "description": "Master FBO Clearing Total asset; debited to create expected inbound cash movement.",
+        "mask": "10101",
+        "purpose": "fbo_clearing_total"
+      },
+      {
+        "description": "Program bank intention supplemental; credited to queue sweep source.",
+        "mask": "8200",
+        "purpose": "pbx_intention"
+      },
+      {
+        "description": "Master FBO Intention supplemental; debited to queue sweep destination.",
+        "mask": "8100",
+        "purpose": "fbo_intention"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "sweep_batch_id": {
+          "description": "Unique identifier for the sweep batch.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "required": [
+        "sweep_batch_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.pbx_clearing.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.fbo_clearing_total.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Stage expected inter-bank cash movement: Master FBO expects inbound, program bank expects outbound.",
+        "leg_number": 1,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.pbx_intention.account_id",
+        "credit_account_type": "SUPPLEMENTAL",
+        "debit_account": "accounts.fbo_intention.account_id",
+        "debit_account_type": "SUPPLEMENTAL",
+        "description": "Record reverse sweep intent for treasury execution tracking.",
+        "leg_number": 2,
+        "ledger_scope": "intention_ledger",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5612
+          ],
+          "event_id": "01956030-0000-7603-8000-000000000001",
+          "event_source": "sweep-engine",
+          "extra_metadata": {
+            "sweep_batch_id": "sweep-batch-001"
+          },
+          "occurred_at": 1772531200000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000006",
+              "purpose": "pbx_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000101001",
+              "purpose": "fbo_clearing_total"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-0000000ca002",
+              "purpose": "pbx_intention"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-0000000ca001",
+              "purpose": "fbo_intention"
+            }
+          ],
+          "amount": 5000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000006",
+            "debit_account_id": "50050000-0000-4001-a000-000000101001",
+            "leg_number": 1
+          },
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050001-0000-4003-a000-0000000ca002",
+            "debit_account_id": "50050001-0000-4003-a000-0000000ca001",
+            "leg_number": 2
+          }
+        ],
+        "name": "reverse_net_sweep_50k_fdic_rebalance",
+        "description": "Net $50,000 FDIC reverse sweep from a program bank back to Master FBO. Aggregate excess at the program bank is returned to the Master FBO as part of treasury rebalancing."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019cdf44-3f45-7869-9c1b-3e4d4c76a491",
+    "state": "DRAFT",
+    "revision": 4,
+    "transition_date": 1773272317765,
+    "content_hash": "sha256:4f803ef0a404a0309cfca6f76ea6cd7063dee1057dec57349386e8477a5a41ea",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

@@ -36,7 +36,7 @@ The customer cache uses an LRU eviction policy with a configurable memory limit.
 
 ### Template Cache
 
-Templates are loaded from S3 (the template store) at startup and held in memory. They are compiled into executable form (CEL expressions, JSON Schema validators) and reused for every event.
+Templates are loaded from the template store at startup and held in memory. They are compiled into executable form (CEL expressions, JSON Schema validators) and reused for every event.
 
 ## Template Cache Refresh
 
@@ -47,7 +47,7 @@ curl -s -X POST "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sit
   -H "x-api-key: lr-test-20250701" | jq .
 ```
 
-This reloads all templates from S3 for the specified site. The operation is synchronous -- when it returns, all templates are refreshed.
+This reloads all templates for the specified site. The operation is synchronous -- when it returns, all templates are refreshed.
 
 ## Template Loader Status
 
@@ -82,7 +82,7 @@ curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/5/tem
 
 ## Balance Service Cache
 
-The Balance Service caches immutable historical balance data. Current (latest) balances are always fetched live from TigerBeetle.
+The Balance Service caches immutable historical balance data. Current (latest) balances are always fetched live from the financial database.
 
 ### Cache Statistics
 
@@ -96,7 +96,7 @@ Key metrics in the response:
 | Metric | Meaning |
 |--------|---------|
 | `hits` | Number of cache hits (served from memory) |
-| `misses` | Number of cache misses (fetched from TigerBeetle) |
+| `misses` | Number of cache misses (fetched from database) |
 | `hit_rate` | Percentage of requests served from cache |
 | `entries` | Number of cached balance snapshots |
 | `size_bytes` | Memory used by the cache |
@@ -127,7 +127,7 @@ curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/readyz" \
 
 ### After Deploying New Templates
 
-1. Deploy templates to S3 via the Ledger Service
+1. Deploy templates via the Ledger Service
 2. Trigger cache refresh: `POST /api/v1/sites/{site_id}/templates:refresh-cache`
 3. Verify status: `GET /api/v1/sites/{site_id}/templates:status`
 4. Confirm no failed templates in `/readyz`
@@ -140,4 +140,4 @@ Platform cache refreshes periodically. To force an immediate refresh, restart th
 
 1. Check customer cache size -- if near the limit, eviction churn slows processing
 2. Check template store status -- a failed template forces a per-event error path
-3. Check Balance Service cache stats -- low hit rates increase TigerBeetle load
+3. Check Balance Service cache stats -- low hit rates increase database load

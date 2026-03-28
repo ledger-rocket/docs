@@ -1,0 +1,104 @@
+# Platform Overview
+
+## What Is LedgerRocket?
+
+LedgerRocket is a programmable double-entry bookkeeping platform. It provides a set of stateless microservices that together handle the full lifecycle of financial record-keeping: defining accounts, processing financial events, producing balanced transfers, and querying balances in real time.
+
+Everything is API-driven. You define your chart of accounts, write declarative templates that describe how business events map to accounting entries, and submit events over HTTP or gRPC. LedgerRocket handles the rest -- validating inputs, evaluating template logic, producing double-entry transfers, and writing them atomically to a purpose-built financial database.
+
+## Who Is It For?
+
+LedgerRocket is built for teams that need a production-grade ledger without building one from scratch:
+
+- **Fintech companies** building payment products, lending platforms, or money movement infrastructure
+- **Neobanks** that need multi-entity, multi-currency ledgering with real-time balances
+- **Payment processors** that require high-throughput, idempotent transaction recording
+- **FBO (For Benefit Of) providers** managing custodial and beneficial ownership relationships across accounts
+
+## Key Capabilities
+
+### Multi-tenant isolation
+
+All data is scoped to a `site_id`. Cross-site access is impossible by design. Each site operates as an independent tenant with its own entities, ledgers, accounts, and templates.
+
+### Multi-entity and multi-currency
+
+A single site can manage multiple entities (companies, individuals) across multiple currencies. Ledgers are scoped to one entity and one currency, providing clean separation while supporting complex organizational structures.
+
+### Template-driven accounting
+
+Accounting rules are defined as declarative templates, not application code. Templates specify how a business event (e.g., "customer payment") maps to double-entry transfers. They use CEL (Common Expression Language) for variable computation and validation, with integer-only arithmetic to prevent rounding errors.
+
+### TigerBeetle-backed storage
+
+All transfers are written atomically to TigerBeetle, a purpose-built database for financial transactions. TigerBeetle provides strict serializability, crash consistency, and high throughput for double-entry workloads.
+
+### Integer-only math
+
+All monetary amounts are stored and computed as integer minor units (cents, satoshis). There are no floating-point numbers anywhere in the money path. Percentage calculations use basis points with banker's rounding.
+
+### Immutable records
+
+Transfers, once written, cannot be modified or deleted. Corrections are made by posting new reversing entries. This provides a complete, auditable history of all financial activity.
+
+## Service Architecture
+
+LedgerRocket consists of four core services:
+
+| Service | Language | Responsibility |
+|---------|----------|----------------|
+| **Ledger Service** | Python | Reference data authority. Manages sites, entities, ledgers, accounts, account codes, currencies, and countries. |
+| **Event Service** | Go | Event processing engine. Accepts financial events, resolves accounts, evaluates templates, produces transfers, and commits them atomically to TigerBeetle. |
+| **Balance Service** | Go | Balance queries. Provides real-time and historical balance lookups against TigerBeetle, with caching for immutable historical data. |
+| **Accounting Rule Engine** | -- | Template management. Handles the lifecycle of accounting templates (draft, approval, live, deprecated) used by the Event Service. |
+
+### How they connect
+
+```text
+                    +-----------------+
+                    | Ledger Service  |
+                    | (reference data)|
+                    +--------+--------+
+                             ^
+                             | resolve accounts,
+                             | ledgers, entities
+                             |
+Client ---POST /events---> Event Service ---atomic write---> TigerBeetle
+                             |                                    ^
+                             | evaluate templates                 |
+                             v                                    |
+                    Accounting Rule Engine              Balance Service
+                    (template definitions)          (balance queries + cache)
+```
+
+## Design Philosophy
+
+### Stateless microservices
+
+Every service instance is stateless. All state lives in the backing stores (PostgreSQL for reference data, TigerBeetle for transfers and balances, S3 for templates). Services can scale horizontally without coordination.
+
+### Hexagonal architecture
+
+All services follow the ports-and-adapters pattern. The domain layer has no framework dependencies. External systems (databases, HTTP clients, caches) are accessed through adapter interfaces that can be swapped for testing or migration.
+
+### API-first
+
+All services expose OpenAPI 3.1 specifications. Error responses follow RFC 9457 Problem Details. Schemas use JSON Schema 2020-12.
+
+### Idempotent event processing
+
+Every event carries a UUIDv7 `event_id` that serves as an idempotency key. Duplicate submissions are detected and safely ignored. If processing fails mid-flight, an outbox recovery mechanism completes the event automatically.
+
+## How LedgerRocket Compares
+
+### vs. building your own ledger
+
+Building a correct double-entry ledger is deceptively hard. You need atomic multi-row writes, idempotency, immutable audit trails, currency-safe integer math, and balance consistency under concurrency. LedgerRocket provides all of this out of the box, plus a template system that separates accounting rules from application code.
+
+### vs. Formance
+
+Formance (formerly Numscript) uses a custom DSL for transaction scripting. LedgerRocket uses CEL expressions within declarative templates, which are more familiar to developers and easier to test. LedgerRocket also uses TigerBeetle for the storage layer rather than PostgreSQL, providing stronger consistency guarantees and higher throughput for financial workloads.
+
+### vs. Twisp
+
+Twisp offers a GraphQL-based ledger API. LedgerRocket takes a REST-first approach with OpenAPI specifications, separates concerns across focused microservices, and provides a template-driven approach to accounting rules rather than requiring clients to specify individual journal entries.

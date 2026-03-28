@@ -1,0 +1,164 @@
+{
+  "template": {
+    "$schema": "",
+    "site_id": 5,
+    "template_id": 5108,
+    "name": "allocation_batch_header",
+    "description": "Record the arrival of an allocation file by debiting the permanent Clearing Total (10101) and crediting a per-file Allocation Clearing instance (10104) for the file total. The per-file 10104 credit balance is drawn down to zero as detail lines (T5103) are loaded.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: Clearing Total (10101) debit balance increases and per-file Allocation Clearing (10104) credit balance increases equally. Total economic ledger assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      }
+    ],
+    "category": "DEPOSITS",
+    "product": "DEPOSITS",
+    "event_type": "TRANSFER",
+    "trigger": "An allocation file arrives and passes validation. Fires once per allocation file before any detail line events (T5103) for that file.",
+    "ledger_scope_descriptions": {
+      "operational": "Operational ledger (ID 5001) where the batch header establishes the per-file allocation clearing balance under 10104."
+    },
+    "accounting_treatments": [
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "IAS_1",
+            "version": 1
+          }
+        ],
+        "description": "Establish the per-file allocation clearing balance by transferring the file total from the permanent Clearing Total to a per-file Allocation Clearing instance; no P&L impact."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Permanent accumulator account (Master FBO - Clearing Total) on the economic ledger; debited once per allocation file for the file total.",
+        "mask": "10101",
+        "purpose": "clearing_total"
+      },
+      {
+        "description": "Per-file Allocation Clearing instance on the economic ledger; credited with the file total, then drawn down to zero by detail line events (T5103).",
+        "mask": "10104",
+        "purpose": "clearing_per_file"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "clearing_account_id": {
+          "description": "Optional identifier for the clearing account associated with this allocation file.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expected_line_count": {
+          "minimum": 1,
+          "type": "integer",
+          "description": "Number of detail line items expected in this allocation file, for monitoring and reconciliation."
+        },
+        "marketplace": {
+          "description": "White-labelled product line identifier for this allocation file (e.g. CraftNest, QuickBite, SkillForge, SeatVault, StayLocal). Optional \u2014 used for analytics and audit traceability.",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "payment_rail": {
+          "minLength": 1,
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Inbound payment rail that originated the deposit (e.g. ACH, WIRE, PUSH_TO_DEBIT, PAYPAL). Optional \u2014 used for analytics and reconciliation traceability.",
+          "maxLength": 50
+        },
+        "total_amount": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Total amount of all line items in the allocation file, as a decimal string (e.g. \"333.50\")."
+        },
+        "allocation_file_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string",
+          "description": "Allocation file reference used to create/select the per-file Allocation Clearing (10104) instance."
+        }
+      },
+      "required": [
+        "allocation_file_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.clearing_per_file.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.clearing_total.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Establish the per-file allocation clearing balance for this batch; detail lines (T5103) will draw this down as they load.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5108
+          ],
+          "event_id": "01952000-0000-7108-8000-000000000001",
+          "event_source": "api",
+          "extra_metadata": {
+            "allocation_file_id": "alloc-2026-02-23-001",
+            "expected_line_count": 2
+          },
+          "occurred_at": 1771804790000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000101001",
+              "purpose": "clearing_total"
+            },
+            {
+              "account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+              "purpose": "clearing_per_file"
+            }
+          ],
+          "amount": 1000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 1000000,
+            "credit_account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+            "debit_account_id": "50050000-0000-4001-a000-000000101001",
+            "leg_number": 1
+          }
+        ],
+        "name": "batch_header_10k",
+        "description": "Batch header for a $10,000.00 allocation file (alloc-2026-02-23-001) linked to bank statement stmt-2026-02-23-A, with 2 expected consumer line items ($8k Customer A + $2k Customer B)."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d216f-7194-794b-b693-c15870b5fd9e",
+    "state": "DRAFT",
+    "revision": 14,
+    "transition_date": 1774382444948,
+    "content_hash": "sha256:387630ac22a2dde669f22a2d55ade28a7cf65200d10e0c8ef5ac0c0fa9b1b104",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

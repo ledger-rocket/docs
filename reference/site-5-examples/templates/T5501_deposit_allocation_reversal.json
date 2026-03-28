@@ -1,0 +1,238 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5501,
+    "name": "deposit_allocation_reversal",
+    "description": "Reverse an incorrect single-consumer deposit allocation across the Economic and Allocation ledgers by crediting the per-file Clearing (10101) and debiting Customer Hold (20101) on the Economic ledger, and crediting Cash Balances - Clearing (11901) and debiting Consumer FBO Clearing (21101) on the Allocation ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Master FBO - Clearing (10101) per-file instance is credited, restoring the clearing balance.",
+        "impact": "decrease",
+        "ledger_scope": "economic_ledger"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Customer Hold (20101) is debited to reverse the prior credit, decreasing the consumer hold liability.",
+        "impact": "decrease",
+        "ledger_scope": "economic_ledger"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Cash Balances - Clearing (11901) is credited to reverse the prior debit.",
+        "impact": "decrease",
+        "ledger_scope": "allocation_ledger"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Consumer Master FBO Clearing (21101) is debited to reverse the prior credit.",
+        "impact": "decrease",
+        "ledger_scope": "allocation_ledger"
+      }
+    ],
+    "category": "DEPOSITS",
+    "product": "DEPOSITS",
+    "event_type": "REVERSAL",
+    "trigger": "Analyst-approved reversal of a previously posted single-consumer deposit allocation due to wrong consumer/amount, duplicate allocation, or file pairing error.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "allocation_ledger": "Allocation ledger (ID 5002) where Cash Balances and consumer FBO Main positions are reversed.",
+      "economic_ledger": "Economic ledger (ID 5001) where per-file clearing and consumer available balances are reversed."
+    },
+    "accounting_treatments": [
+      {
+        "type": "refund_reversal",
+        "policy_refs": [
+          {
+            "id": "ASC_250",
+            "version": 1
+          },
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Contra-entry reversal of a previously recorded deposit allocation, correcting an error by reversing the original postings without creating new economic exposure."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Consumer deposit hold liability (economic ledger) debited to reverse the prior allocation credit.",
+        "mask": "20101",
+        "purpose": "consumer_hold"
+      },
+      {
+        "description": "Per-file clearing instance (Master FBO - Clearing) credited to reverse the prior allocation debit, restoring the clearing balance.",
+        "mask": "10101",
+        "purpose": "clearing_per_file"
+      },
+      {
+        "description": "Consumer Master FBO Clearing liability (allocation ledger) debited to reverse the prior allocation credit.",
+        "mask": "21101",
+        "purpose": "consumer_fbo_clearing"
+      },
+      {
+        "description": "Cash Balances - Clearing asset (allocation ledger) credited to reverse the prior allocation debit.",
+        "mask": "11901",
+        "purpose": "cash_balances_clearing"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "investigation_reference": {
+          "description": "Ticket/case reference supporting the reversal.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "original_allocation_file_id": {
+          "description": "Identifier of the allocation file containing the incorrect line item.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "original_statement_file_id": {
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Identifier of the bank statement file linked to the original allocation.",
+          "type": "string"
+        },
+        "original_event_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUID of the original T5101 deposit-allocation event being reversed."
+        },
+        "reason_code": {
+          "enum": [
+            "WRONG_CONSUMER",
+            "WRONG_AMOUNT",
+            "DUPLICATE_ALLOCATION",
+            "FILE_PAIRING_ERROR",
+            "MANUAL_CORRECTION"
+          ],
+          "description": "Reason for reversal.",
+          "type": "string"
+        },
+        "reversal_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the reversal decision/approval in ISO 8601 format."
+        },
+        "approver": {
+          "description": "Identity of the analyst/approver authorizing the reversal.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "original_event_id",
+        "reason_code",
+        "reversal_timestamp",
+        "approver",
+        "investigation_reference",
+        "original_allocation_file_id",
+        "original_statement_file_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.clearing_per_file.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.consumer_hold.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Reverse the consumer's deposit allocation: restore the per-file clearing balance and unwind the hold.",
+        "leg_number": 1,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "refund_reversal"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cash_balances_clearing.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.consumer_fbo_clearing.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Mirror the allocation reversal on the allocation ledger for FDIC tracking.",
+        "leg_number": 2,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "refund_reversal"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5501
+          ],
+          "event_id": "0195ff12-3a3b-7d1c-8c9b-2c6f6b2d0a11",
+          "event_source": "api",
+          "extra_metadata": {
+            "original_event_id": "01952000-0000-7001-8000-000000000001",
+            "reason_code": "WRONG_CONSUMER",
+            "reversal_timestamp": "2026-02-23T14:22:05Z",
+            "approver": "jordan.lee@finops.example",
+            "investigation_reference": "CASE-2026-0223-UC5-0007",
+            "original_allocation_file_id": "alloc-2026-02-23-001",
+            "original_statement_file_id": "stmt-2026-02-23-A"
+          },
+          "occurred_at": 1771900100000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca002",
+              "purpose": "consumer_hold"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000002",
+              "purpose": "clearing_per_file"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca002",
+              "purpose": "consumer_fbo_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "cash_balances_clearing"
+            }
+          ],
+          "amount": 800000
+        },
+        "expected_transfers": [
+          {
+            "amount": 800000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000002",
+            "debit_account_id": "50050000-0000-4001-a000-0000000ca002",
+            "leg_number": 1
+          },
+          {
+            "amount": 800000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011901",
+            "debit_account_id": "50050000-0000-4002-a000-0000000ca002",
+            "leg_number": 2
+          }
+        ],
+        "name": "wrong_consumer_reversal_8000",
+        "description": "Wrong consumer: $8,000.00 was allocated to Consumer A but should have been Consumer B. Reversal of the Customer A allocation."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019ce8c3-fdca-7649-af65-6b267ea6d077",
+    "state": "DRAFT",
+    "revision": 9,
+    "transition_date": 1773431684554,
+    "content_hash": "sha256:2b7105a0a0476674bea2d56fec0b9cc61f4fba5eb595c468ab841a5b307b8458",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

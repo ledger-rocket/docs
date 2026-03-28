@@ -17,7 +17,7 @@ This guarantees that the books always balance: total debits across all accounts 
 
 ## Same-Ledger Constraint
 
-Both the debit and credit account must belong to the **same ledger**. This is enforced at the TigerBeetle storage layer. Since a ledger is scoped to one entity and one currency, this constraint ensures:
+Both the debit and credit account must belong to the **same ledger**. This is enforced at the storage layer. Since a ledger is scoped to one entity and one currency, this constraint ensures:
 
 - No implicit currency conversion happens within a transfer
 - Each transfer operates within a single entity's books
@@ -32,7 +32,7 @@ For example, $1,500.00 USD is represented as `150000` (integer cents).
 
 ## Transfer Grouping by Event
 
-Transfers are grouped by `event_id`. A single event processed through one or more templates may generate multiple transfers (one per template leg). All transfers from an event are submitted atomically to TigerBeetle -- either all succeed or none do.
+Transfers are grouped by `event_id`. A single event processed through one or more templates may generate multiple transfers (one per template leg). All transfers from an event are submitted atomically -- either all succeed or none do.
 
 ## Enriched Transfers
 
@@ -40,7 +40,7 @@ When querying transfers, the API returns **enriched transfers** that include res
 
 | Field | Description |
 |-------|-------------|
-| `transfer_id` | UUID assigned by TigerBeetle |
+| `transfer_id` | UUID assigned by the storage layer |
 | `event_id` | The originating event |
 | `amount` | Transfer amount in minor units |
 | `debit_account_id` | UUID of the debited account |

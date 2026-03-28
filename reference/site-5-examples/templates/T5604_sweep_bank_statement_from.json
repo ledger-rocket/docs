@@ -1,0 +1,179 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5604,
+    "name": "sweep_bank_statement_from",
+    "description": "UC6 Step 4: Bank statement received for Master FBO showing outbound sweep payment. Debit Master FBO Control (10102) and credit Master FBO (10100) on the economic ledger. Debit Cash Balances Master FBO Control (11902) and credit Cash Balances Master FBO (11900) on the allocation ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: Control debited, Settled credited. Net zero on economic ledger.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: CB Control debited, CB Settled credited. Net zero on allocation ledger.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "SWEEP",
+    "product": "FDIC_SWEEP",
+    "event_type": "TRANSFER",
+    "trigger": "Bank statement received for Master FBO showing sweep debit.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "operational": "Operational ledger (ID 5001) where control balance and cash update are recorded for FBO.",
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where control balance and cash update are recorded for FBO tracking."
+    },
+    "accounting_treatments": [
+      {
+        "type": "cash_movement",
+        "policy_refs": [
+          {
+            "id": "ASC_230",
+            "version": 1
+          }
+        ],
+        "description": "Record bank statement entry reducing Master FBO cash and creating control position."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Master FBO Control asset; debited for bank statement ingestion.",
+        "mask": "10102",
+        "purpose": "fbo_control"
+      },
+      {
+        "description": "Master FBO Settled asset; credited to reduce confirmed cash.",
+        "mask": "10100",
+        "purpose": "fbo_settled"
+      },
+      {
+        "description": "Cash Balances Master FBO Control asset; debited for allocation tracking.",
+        "mask": "11902",
+        "purpose": "cb_fbo_control"
+      },
+      {
+        "description": "Cash Balances Master FBO asset; credited to reduce allocation cash.",
+        "mask": "11900",
+        "purpose": "cb_fbo_settled"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "statement_id": {
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Bank statement identifier.",
+          "type": "string"
+        },
+        "statement_line_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Statement line reference."
+        }
+      },
+      "required": [
+        "statement_id",
+        "statement_line_ref"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.fbo_settled.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.fbo_control.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Ingest outbound sweep on Master FBO bank statement; control stages the debit for reconciliation.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "cash_movement"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cb_fbo_settled.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.cb_fbo_control.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the Master FBO bank statement on the allocation ledger.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "cash_movement"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5604
+          ],
+          "event_id": "01956040-0000-7604-8000-000000000001",
+          "event_source": "bank-statement-feed",
+          "extra_metadata": {
+            "statement_id": "FBO-STMT-2026-03-01",
+            "statement_line_ref": "SWEEP-OUT-001"
+          },
+          "occurred_at": 1772704000000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "fbo_control"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000010101",
+              "purpose": "fbo_settled"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "cb_fbo_control"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011900",
+              "purpose": "cb_fbo_settled"
+            }
+          ],
+          "amount": 5000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050000-0000-4001-a000-000000010101",
+            "debit_account_id": "50050000-0000-4001-a000-000000000003",
+            "leg_number": 1
+          },
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011900",
+            "debit_account_id": "50050000-0000-4002-a000-000000011902",
+            "leg_number": 2
+          }
+        ],
+        "name": "fbo_stmt_fdic_sweep_out_50k",
+        "description": "Master FBO bank statement showing net $50,000 FDIC sweep payment out. Aggregate of FDIC limit rebalancing across customers."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c2d-8d19-7730-92e8-229e3a119c79",
+    "state": "DRAFT",
+    "revision": 9,
+    "transition_date": 1774294240537,
+    "content_hash": "sha256:877c1418d150eacfe52826b91a5e55cf4f6b39696c0ce3f489197f99d8a039e0",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

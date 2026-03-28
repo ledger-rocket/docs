@@ -1,0 +1,142 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5105,
+    "name": "ingest_batch_header_allocation",
+    "description": "When an allocation file is received, the file total is posted to the permanent Clearing Total and a per-file Allocation Clearing account.\n\nThe Allocation Clearing per-file (10104) credit balance represents the expected total for this file. Detail lines (T5106) draw it down to zero. If the balance is non-zero after all detail lines are loaded, the file is incomplete.\n\n**Accounts involved:**\n- 10101 Clearing Total -- permanent accumulator, debit balance grows with each file\n- 10104 Allocation Clearing per-file -- per-file instance, credit balance zeroes when all detail lines load",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification within Master FBO house accounts: Clearing Total (10101) debit balance increases while Allocation Clearing per-file (10104) credit balance increases equally. Total economic ledger assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "economic_ledger"
+      }
+    ],
+    "category": "DEPOSITS",
+    "product": "DEPOSITS",
+    "event_type": "DEPOSIT",
+    "trigger": "Allocation file arrives and passes validation. Fires once per file before detail lines (T5106).",
+    "ledger_scope_descriptions": {
+      "economic_ledger": "Economic ledger (ID 5001) where the batch header establishes the per-file allocation clearing balance."
+    },
+    "accounting_treatments": [
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Establish the per-file allocation clearing balance by transferring the file total from the permanent Clearing Total to a per-file Allocation Clearing instance; no P&L impact."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Permanent accumulator account (Master FBO - Clearing Total) on the economic ledger; debited once per allocation file for the file total.",
+        "mask": "10101",
+        "purpose": "clearing_total"
+      },
+      {
+        "description": "Per-file allocation clearing instance (Master FBO - Allocation Clearing) on the economic ledger; credited with the file total, then drawn down to zero by detail line events (T5106).",
+        "mask": "10104",
+        "purpose": "allocation_clearing_per_file"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "allocation_file_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string",
+          "description": "Allocation file reference used to create/select the per-file Allocation Clearing (10104) instance."
+        },
+        "expected_line_count": {
+          "minimum": 1,
+          "type": "integer",
+          "description": "Number of consumer line items expected in this allocation file, for monitoring and reconciliation."
+        },
+        "statement_file_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string",
+          "description": "Bank statement file reference linking this allocation file to the corresponding bank statement."
+        }
+      },
+      "required": [
+        "allocation_file_id",
+        "statement_file_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [
+      {
+        "description": "Static: Master FBO - Clearing Total (10101) -- single permanent accumulator, always the same.",
+        "name": "clearing_total",
+        "value": "50050000-0000-4001-a000-000000101001"
+      }
+    ],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.allocation_clearing_per_file.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.clearing_total.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Reserve the file total so detail lines can draw it down individually; a non-zero balance after all lines load flags an incomplete file.",
+        "leg_number": 1,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5105
+          ],
+          "event_id": "01952000-0000-7105-8000-000000000001",
+          "event_source": "allocation_file_service",
+          "extra_metadata": {
+            "allocation_file_id": "alloc-2026-02-23-001",
+            "expected_line_count": 2,
+            "statement_file_id": "stmt-2026-02-23-A"
+          },
+          "occurred_at": 1771804790000,
+          "accounts": [
+            {
+              "account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+              "purpose": "allocation_clearing_per_file"
+            }
+          ],
+          "amount": 1000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 1000000,
+            "credit_account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+            "debit_account_id": "50050000-0000-4001-a000-000000101001",
+            "leg_number": 1
+          }
+        ],
+        "name": "batch_header_10k",
+        "description": "Batch header for a $10,000.00 allocation file (alloc-2026-02-23-001) with 2 expected line items ($8k Customer A + $2k Customer B)."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d2ab7-fe93-753e-b47c-cede3c40baf1",
+    "state": "DRAFT",
+    "revision": 4,
+    "transition_date": 1774538194579,
+    "content_hash": "sha256:16a8dbd246b50890223ff2fc34a9bc9f6c2b092712934ee2333049255812cfe8",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

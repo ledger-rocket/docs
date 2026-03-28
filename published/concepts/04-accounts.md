@@ -1,0 +1,88 @@
+# Accounts
+
+An **account** is a balance-holding object within a ledger. It has a beneficial owner entity, a custodian entity, and an account code that classifies it in the chart of accounts.
+
+## Dimensional Ownership Model
+
+Accounts are classified along four orthogonal dimensions, inherited from their account code:
+
+### EntityScope -- who owns this account?
+
+| Value | Meaning |
+|-------|---------|
+| `HOUSE` | Company-owned (your organization's own accounts) |
+| `CLIENT` | Customer-owned (held on behalf of clients) |
+| `GROUP` | Intercompany (between entities in the same group) |
+
+### CounterpartyType -- who is on the other side?
+
+| Value | Meaning |
+|-------|---------|
+| `CLIENT` | End customers |
+| `INTERCOMPANY` | Another entity within the group |
+| `SCHEME` | Card schemes, payment networks |
+| `STATUTORY` | Tax authorities, regulators |
+| `EXTERNAL` | Banks, vendors, other third parties |
+
+### FunctionalDomain -- what is the operational purpose?
+
+| Value | Meaning |
+|-------|---------|
+| `OPERATIONAL` | Day-to-day business activity |
+| `SETTLEMENT` | Clearing and settlement flows |
+| `TAX` | Tax-related holds and obligations |
+| `CONTINGENT` | Provisions and contingent liabilities |
+
+### ValuationRole -- how does it appear on financial statements?
+
+| Value | Meaning |
+|-------|---------|
+| `PRIMARY` | Standard on-balance-sheet account |
+| `CONTRA` | Offsets a primary account (e.g., allowance for doubtful accounts) |
+| `OFF_BALANCE_SHEET` | Tracked but not on the balance sheet |
+
+## Linked Accounts (Nostro/Vostro Pairs)
+
+Two accounts can be linked via `linked_account_id` and `linked_account_relation`. This models correspondent banking relationships where both sides of a nostro/vostro pair are tracked in the system. The link is bidirectional -- each account references the other.
+
+## Rollup Accounts
+
+An account with `is_rollup: true` is an aggregation account used for reporting. When an account code has `has_rollup: true`, the system automatically creates rollup transfers alongside business transfers. Direct business postings to rollup accounts are forbidden unless the event includes a `manual_rollup_override` directive.
+
+## Account Immutability
+
+Accounts are **immutable after creation**. You cannot change an account's ledger, entity, account code, or any classification field. To "change" an account, create a new one and migrate balances via a transfer event.
+
+## Visibility Flags
+
+| Flag | Purpose |
+|------|---------|
+| `is_presentable` | Whether the account appears in customer-facing views |
+| `is_internal_gl_only` | Whether the account is only visible in internal general ledger reports |
+
+## Creating an Account
+
+```bash
+curl -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/accounts \
+  -H "x-api-key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "records": [
+      {
+        "account_id": "0192b4f0-7abc-7def-8000-000000000001",
+        "external_id": "ACME-USD-CASH-001",
+        "name": "Acme Cash Account",
+        "ledger_id": 700,
+        "account_code_id": 1,
+        "entity_id": "123e4567-e89b-12d3-a456-426614174000",
+        "custodian_entity_id": "123e4567-e89b-12d3-a456-426614174000",
+        "site_id": 1,
+        "status": "ACTIVE",
+        "is_rollup": false,
+        "created_by": "system"
+      }
+    ]
+  }'
+```
+
+Required fields include `entity_id` (beneficial owner), `custodian_entity_id`, `ledger_id`, `account_code_id`, and `site_id`. The `linked_account_id` and `linked_account_relation` fields are optional and used for nostro/vostro pairs.

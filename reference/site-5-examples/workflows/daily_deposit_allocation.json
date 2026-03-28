@@ -1,0 +1,99 @@
+{
+  "workflow": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/v1.1.0/workflow.schema.json",
+    "workflow_id": "019c903c-a751-7ecc-b9eb-4f500d7f376d",
+    "code": "daily-deposit-allocation",
+    "site_id": 5,
+    "name": "Daily Deposit Allocation",
+    "description": "# UC1: Daily Deposit Allocation\n\nEnd-to-end processing of a daily deposit allocation file. Ingests the bank statement, records the allocation file header, allocates each consumer's share, then reconciles clearing and control accounts.\n\n## Steps\n\n1. **Ingest Bank Statement** (T5401) -- Record each FBO statement line: DR Settled, CR Control on the economic ledger; mirror on the allocation ledger. Repeats per line item.\n2. **Record Batch Header** (T5102) -- Create per-file Clearing balance from the allocation file total. One event per file.\n3. **Allocate Consumer Share** (T5101) -- Post each consumer's deposit to Hold (20101) and track on the allocation ledger. Repeats per consumer.\n4. **Flush Clearing** (T5402) -- Zero Clearing Total into Suspense, move consumer funds from Hold to Available, confirm allocation ledger positions.\n5. **Flush Control** (T5407) -- Zero Control into Suspense. Both Suspense accounts net to zero, proving clearing and control sides agree.\n\n**Final state:** Clearing, Control, and Suspense all zero. Consumer Available increased, Settled increased -- funds arrived at the FBO and are allocated.",
+    "require_shared_ledgers": true,
+    "steps": [
+      {
+        "id": "ingest_bank_statement",
+        "template_id": 5401,
+        "event_sources": [
+          "bank-statement-feed"
+        ],
+        "examples": [
+          2
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Record the bank statement line item: debit Settled (10100) and credit Control (10102) on the economic ledger; debit Cash Balances (11900) and credit Cash Balances \u2013 Control (11902) on the allocation ledger.",
+        "trigger": "bank_statement_file_received",
+        "repeat_while": "inbound_line_items_remaining_in_statement_file",
+        "repeat_while_description": "Fires once per inbound line item in the bank statement file."
+      },
+      {
+        "id": "record_batch_header",
+        "template_id": 5102,
+        "event_sources": [
+          "allocation-file-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Ingest the allocation file batch header: debit Clearing Total (10101) and credit the per-file Clearing instance to establish the clearing balance for this file.",
+        "trigger": "allocation_file_received_and_validated"
+      },
+      {
+        "id": "allocate_consumer_share",
+        "template_id": 5101,
+        "event_sources": [
+          "allocation-file-service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Allocate each consumer\u2019s share: debit per-file Clearing (10101) and credit Customer Hold (20101) on the economic ledger; debit Cash Balances \u2013 Clearing (11901) and credit Customer Master FBO Clearing (21101) on the allocation ledger.",
+        "trigger": "per_consumer_line_item_in_allocation_file",
+        "repeat_while": "consumer_line_items_remaining_in_allocation_file",
+        "repeat_while_description": "Fires once per consumer line item in the allocation file. A 300k-consumer file produces 300k independent events, each as its own atomic commit spanning both ledgers."
+      },
+      {
+        "id": "flush_clearing",
+        "template_id": 5402,
+        "event_sources": [
+          "reconciliation-service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Reconcile clearing: zero out Clearing Total into Suspense (10103) on the economic ledger, move consumer funds from Hold (20101) to Available (20100), flush Cash Balances \u2013 Clearing (11901) into Cash Balances \u2013 Suspense (11903) on the allocation ledger, and confirm consumer FBO positions from Clearing (21101) to settled (21100).",
+        "trigger": "all_consumer_allocations_complete_for_file",
+        "condition": "clearing_per_file_instance_balance_is_zero",
+        "condition_description": "Fires when the per-file Clearing (10101) instance balance reaches zero, confirming all consumer allocations for the file have committed."
+      },
+      {
+        "id": "flush_control",
+        "template_id": 5407,
+        "event_sources": [
+          "reconciliation-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Reconcile control: flush Control (10102) into Suspense (10103) on the economic ledger, and flush Cash Balances \u2013 Control (11902) into Cash Balances \u2013 Suspense (11903) on the allocation ledger. Suspense nets to zero on both ledgers.",
+        "trigger": "bank_statement_matched_against_allocation_file",
+        "condition": "control_per_file_instance_has_balance",
+        "condition_description": "Fires when the matching engine pairs a bank statement Control entry against an allocation file. Independent of Template 4 \u2014 can fire in either order."
+      }
+    ]
+  },
+  "status": "DELETED"
+}

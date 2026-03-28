@@ -1,0 +1,168 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5616,
+    "name": "sweep_recon_clearing_rail",
+    "description": "Intra-FBO inter-rail sweep reconciliation: flush clearing to suspense for one rail instance on the economic ledger. Bidirectional: for the source rail (clearing has debit balance), DR clearing CR suspense. For the dest rail (clearing has credit balance), DR suspense CR clearing. Caller controls direction by assigning accounts to debit/credit purposes.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: clearing flushed to suspense for one rail instance. Net zero on economic ledger.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "economic_ledger"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation service matches intra-rail clearing against bank statement for one rail.",
+    "ledger_scope_descriptions": {
+      "economic_ledger": "Economic ledger (ID 5001) where clearing is flushed to suspense for one rail."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Flush clearing balance to suspense for one rail instance in intra-rail reconciliation."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "FBO Clearing or Suspense asset; debited side of flush.",
+        "mask": "10101|10103",
+        "purpose": "debit_clearing_suspense"
+      },
+      {
+        "description": "FBO Clearing or Suspense asset; credited side of flush.",
+        "mask": "10101|10103",
+        "purpose": "credit_clearing_suspense"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "recon_id": {
+          "type": "string",
+          "description": "Reconciliation event identifier.",
+          "maxLength": 100,
+          "minLength": 1
+        }
+      },
+      "required": [
+        "recon_id"
+      ],
+      "type": "object"
+    },
+    "validations": [
+      {
+        "description": "Debit and credit accounts must use different account codes (one clearing, one suspense).",
+        "expression": "accounts.debit_clearing_suspense.account_code.code != accounts.credit_clearing_suspense.account_code.code",
+        "name": "distinct_codes"
+      }
+    ],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.credit_clearing_suspense.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.debit_clearing_suspense.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Flush clearing to suspense (or reverse) for one rail on economic ledger.",
+        "leg_number": 1,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5616
+          ],
+          "event_id": "01960000-0000-7616-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-clr-intra-wp-001"
+          },
+          "occurred_at": 1773308800000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000001101002",
+              "purpose": "debit_clearing_suspense"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-00000000f024",
+              "purpose": "credit_clearing_suspense"
+            }
+          ],
+          "amount": 2500000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4001-a000-00000000f024",
+            "debit_account_id": "50050000-0000-4001-a000-000001101002",
+            "leg_number": 1
+          }
+        ],
+        "name": "intra_rail_recon_clearing_source_worldpay_25k",
+        "description": "Source rail (Worldpay): clearing has debit balance from T5613. DR clearing, CR suspense."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5616
+          ],
+          "event_id": "01960000-0000-7616-8000-000000000002",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-clr-intra-st-001"
+          },
+          "occurred_at": 1773308900000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "debit_clearing_suspense"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000101001",
+              "purpose": "credit_clearing_suspense"
+            }
+          ],
+          "amount": 2500000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4001-a000-000000101001",
+            "debit_account_id": "50050000-0000-4001-a000-000000000004",
+            "leg_number": 1
+          }
+        ],
+        "name": "intra_rail_recon_clearing_dest_stripe_25k",
+        "description": "Dest rail (Stripe): clearing has credit balance from T5613. DR suspense, CR clearing."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d0c50-1cd2-71d7-aeda-7c9220f24aa4",
+    "state": "DRAFT",
+    "revision": 3,
+    "transition_date": 1774028070098,
+    "content_hash": "sha256:873ecbd39e899f1bf155b6db38700eb6e5ea2ed162c2b608fc8302e08f2e2690",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

@@ -1,0 +1,226 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5608,
+    "name": "sweep_recon_cash_in_transit_fbo",
+    "description": "UC6 Step 8: Reconciliation cash-in-transit for Master FBO side. Reclassifies customer allocation balances through Cash in Transit on the allocation ledger. Leg 1 moves between Cash Balances Clearing (11901) and Cash Balances Suspense (11903). Leg 2 moves between Customer Master FBO (21100) and Customer Cash in Transit (21801). Direction depends on whether the customer's sweep is inbound or outbound.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: Cash Balances Clearing to/from Cash Balances Suspense. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability-to-liability reclassification: Customer Master FBO to/from Customer Cash in Transit. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation engine matches FBO-side clearing against bank confirmation for a specific customer.",
+    "ledger_scope_descriptions": {
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where customer-level FBO clearing is reclassified through cash in transit."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Reclassify FBO-side clearing to suspense and move customer allocation through cash in transit."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Cash Balances asset (11901 or 11903); debited side of cash balances reclassification.",
+        "mask": "119**",
+        "purpose": "debit_cash_bal"
+      },
+      {
+        "description": "Cash Balances asset (11901 or 11903); credited side of cash balances reclassification.",
+        "mask": "119**",
+        "purpose": "credit_cash_bal"
+      },
+      {
+        "description": "Customer liability (21100 or 21901); debited side of customer reclassification.",
+        "mask": "21***",
+        "purpose": "debit_customer"
+      },
+      {
+        "description": "Customer liability (21100 or 21901); credited side of customer reclassification.",
+        "mask": "21***",
+        "purpose": "credit_customer"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "consumer_external_id": {
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Consumer entity external identifier.",
+          "type": "string"
+        },
+        "recon_id": {
+          "maxLength": 100,
+          "description": "Reconciliation event identifier.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "recon_id",
+        "consumer_external_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.credit_cash_bal.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.debit_cash_bal.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Reclassify Cash Balances Clearing to/from Cash Balances Suspense on allocation ledger.",
+        "leg_number": 1,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.credit_customer.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.debit_customer.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Reclassify Customer Master FBO to/from Customer Cash in Transit on allocation ledger.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5608
+          ],
+          "event_id": "01956080-0000-7608-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-cit-fbo-001",
+            "consumer_external_id": "cust-a-001"
+          },
+          "occurred_at": 1772876800000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "debit_cash_bal"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011903",
+              "purpose": "credit_cash_bal"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca001",
+              "purpose": "debit_customer"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca020",
+              "purpose": "credit_customer"
+            }
+          ],
+          "amount": 7000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 7000000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011903",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 1
+          },
+          {
+            "amount": 7000000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000ca020",
+            "debit_account_id": "50050000-0000-4002-a000-0000000ca001",
+            "leg_number": 2
+          }
+        ],
+        "name": "recon_cit_fbo_cust_a_70k_over_fdic",
+        "description": "Customer A $70,000 excess over $250k FDIC limit. DR CB FBO Clearing, CR CB FBO Suspense; DR Customer A Master FBO, CR Customer A Cash in Transit."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5608
+          ],
+          "event_id": "01956080-0000-7608-8000-000000000002",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-cit-fbo-002",
+            "consumer_external_id": "cust-b-001"
+          },
+          "occurred_at": 1772876805000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4002-a000-000000011903",
+              "purpose": "debit_cash_bal"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "credit_cash_bal"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000cb020",
+              "purpose": "debit_customer"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000cb001",
+              "purpose": "credit_customer"
+            }
+          ],
+          "amount": 2000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2000000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011901",
+            "debit_account_id": "50050000-0000-4002-a000-000000011903",
+            "leg_number": 1
+          },
+          {
+            "amount": 2000000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000cb001",
+            "debit_account_id": "50050000-0000-4002-a000-0000000cb020",
+            "leg_number": 2
+          }
+        ],
+        "name": "recon_cit_fbo_cust_b_20k_under_fdic",
+        "description": "Customer B $20,000 under $250k FDIC limit (reversed). DR CB FBO Suspense, CR CB FBO Clearing; DR Customer B Cash in Transit, CR Customer B Master FBO."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c2f-172d-7d4c-9e4d-d5868408ca82",
+    "state": "DRAFT",
+    "revision": 9,
+    "transition_date": 1774294341421,
+    "content_hash": "sha256:1bec65aba9b94a2e538dbef87dd46e513ee8b28aedfc7ede8a7b264f170ce6f3",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

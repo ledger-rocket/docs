@@ -1,0 +1,261 @@
+{
+  "template": {
+    "$schema": "",
+    "site_id": 5,
+    "template_id": 5204,
+    "name": "disbursement_ach_per_customer_submission",
+    "description": "Record a single customer's entry in a NACHA ACH file. Zeros out the customer's Pending Disbursements (20102) against the per-file ACH Clearing Files (10104), and mirrors on the allocation ledger by zeroing the customer's FBO Pending Disbursements (21102) against Cash Balances - Clearing (11901).",
+    "financial_statements_impact": [
+      {
+        "account_type": "LIABILITY",
+        "description": "Consumer Pending Disbursements (20102) is debited (zeroing the per-customer disbursement obligation) on the economic ledger.",
+        "impact": "decrease",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Per-file ACH Clearing Files (10104) is credited (drawing down the per-file clearing balance) on the economic ledger.",
+        "impact": "decrease_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Consumer FBO Pending Disbursements (21102) is debited (zeroing the per-customer FDIC position) on the allocation ledger.",
+        "impact": "decrease",
+        "ledger_scope": "fdic_tracking"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Cash Balances - Clearing (11901) is credited (decreasing the clearing-side FDIC asset position) on the allocation ledger.",
+        "impact": "decrease_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "DISBURSEMENTS",
+    "product": "DISBURSEMENTS",
+    "event_type": "TRANSFER",
+    "trigger": "Per-customer line item in a NACHA ACH file, after the batch header (T5203) has established the per-file clearing balance.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where the customer's FBO Pending Disbursements is zeroed and Cash Balances - Clearing is credited.",
+      "operational": "Operational ledger (ID 5001) where the customer's Pending Disbursements is zeroed and the per-file ACH Clearing Files balance is drawn down."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Settle the customer's pending disbursement against the per-file ACH clearing balance."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Record the FDIC fund location reclassification from per-customer FBO Pending Disbursements to Cash Balances - Clearing on the allocation ledger."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Consumer Pending Disbursements liability on the economic ledger; debited to zero out the per-customer disbursement obligation.",
+        "mask": "20102",
+        "purpose": "consumer_ach_payable"
+      },
+      {
+        "description": "Per-file clearing instance (Master FBO - ACH Clearing Files) on the economic ledger; credited to draw down the per-file clearing balance.",
+        "mask": "10104",
+        "purpose": "clearing_per_file"
+      },
+      {
+        "description": "Consumer FBO Pending Disbursements liability on the allocation ledger; debited to zero out the per-customer FDIC position.",
+        "mask": "21102",
+        "purpose": "consumer_fbo_payable"
+      },
+      {
+        "description": "Cash Balances - Clearing on the allocation ledger; credited to record the clearing-side FDIC position.",
+        "mask": "11901",
+        "purpose": "cash_balances_clearing"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "ach_file_id": {
+          "description": "NACHA ACH file reference used to select the per-file ACH Clearing Files (10104) instance being drawn down.",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "consumer_external_id": {
+          "description": "Consumer entity external identifier for routing to the correct consumer accounts.",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "entry_reference": {
+          "minLength": 1,
+          "type": "string",
+          "description": "Deterministic per-entry identifier within the ACH file for idempotency/deduplication.",
+          "maxLength": 150
+        }
+      },
+      "required": [
+        "ach_file_id",
+        "consumer_external_id",
+        "entry_reference"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.clearing_per_file.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.consumer_ach_payable.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Settle this consumer's pending disbursement against the per-file ACH clearing balance.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cash_balances_clearing.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.consumer_fbo_payable.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Mirror the settlement on the allocation ledger for FDIC fund-location tracking.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5204
+          ],
+          "event_id": "01952000-0000-7002-8000-000000000030",
+          "event_source": "api",
+          "extra_metadata": {
+            "ach_file_id": "ach-disb-2026-03-01-001",
+            "consumer_external_id": "cust-a-001",
+            "entry_reference": "entry_000001"
+          },
+          "occurred_at": 1772531210000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca003",
+              "purpose": "consumer_ach_payable"
+            },
+            {
+              "account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+              "purpose": "clearing_per_file"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca010",
+              "purpose": "consumer_fbo_payable"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "cash_balances_clearing"
+            }
+          ],
+          "amount": 20000
+        },
+        "expected_transfers": [
+          {
+            "amount": 20000,
+            "credit_account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+            "debit_account_id": "50050000-0000-4001-a000-0000000ca003",
+            "leg_number": 1
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011901",
+            "debit_account_id": "50050000-0000-4002-a000-0000000ca010",
+            "leg_number": 2
+          }
+        ],
+        "name": "customer_a_ach_submission_200",
+        "description": "Customer A's $200.00 entry in ACH file ach-disb-2026-03-01-001. Zeros Pending Disbursements, draws down per-file ACH clearing, zeros FBO Pending Disbursements."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5204
+          ],
+          "event_id": "01952000-0000-7002-8000-000000000031",
+          "event_source": "api",
+          "extra_metadata": {
+            "ach_file_id": "ach-disb-2026-03-01-001",
+            "consumer_external_id": "cust-b-001",
+            "entry_reference": "entry_000002"
+          },
+          "occurred_at": 1772531215000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-0000000cb003",
+              "purpose": "consumer_ach_payable"
+            },
+            {
+              "account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+              "purpose": "clearing_per_file"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000cb010",
+              "purpose": "consumer_fbo_payable"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "cash_balances_clearing"
+            }
+          ],
+          "amount": 30000
+        },
+        "expected_transfers": [
+          {
+            "amount": 30000,
+            "credit_account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+            "debit_account_id": "50050000-0000-4001-a000-0000000cb003",
+            "leg_number": 1
+          },
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011901",
+            "debit_account_id": "50050000-0000-4002-a000-0000000cb010",
+            "leg_number": 2
+          }
+        ],
+        "name": "customer_b_ach_submission_300",
+        "description": "Customer B's $300.00 entry in ACH file ach-disb-2026-03-01-001. Zeros Pending Disbursements, draws down per-file ACH clearing, zeros FBO Pending Disbursements."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d216f-7939-703a-9349-f59b47232ffa",
+    "state": "DRAFT",
+    "revision": 11,
+    "transition_date": 1774382446905,
+    "content_hash": "sha256:0b0dde12ac611f979c79339558df9d559db152a10d29efd14e6c44170aa9f0fa",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

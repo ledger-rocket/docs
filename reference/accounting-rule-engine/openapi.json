@@ -1,0 +1,3936 @@
+{
+    "components": {
+        "schemas": {
+            "AccountType": {
+                "description": "Expected account type for the debit account",
+                "enum": [
+                    "ASSET",
+                    "EQUITY",
+                    "EXPENSE",
+                    "LIABILITY",
+                    "REVENUE",
+                    "SUPPLEMENTAL"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "AccountTypeASSET",
+                    "AccountTypeEQUITY",
+                    "AccountTypeEXPENSE",
+                    "AccountTypeLIABILITY",
+                    "AccountTypeREVENUE",
+                    "AccountTypeSUPPLEMENTAL"
+                ]
+            },
+            "AccountingTreatment": {
+                "properties": {
+                    "description": {
+                        "description": "Human-readable description of the accounting treatment",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "policy_refs": {
+                        "description": "References to accounting policy documents",
+                        "items": {
+                            "$ref": "#/components/schemas/PolicyRef"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/TreatmentType"
+                    }
+                },
+                "required": [
+                    "description",
+                    "policy_refs",
+                    "type"
+                ],
+                "type": "object"
+            },
+            "AuditAction": {
+                "description": "Action that caused this state transition",
+                "enum": [
+                    "APPROVE",
+                    "CREATE",
+                    "DELETE",
+                    "DEPRECATE",
+                    "REJECT",
+                    "ROLLBACK",
+                    "SUBMIT_FOR_APPROVAL",
+                    "UNDELETE",
+                    "UPDATE",
+                    "WITHDRAW"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "AuditActionAPPROVE",
+                    "AuditActionCREATE",
+                    "AuditActionDELETE",
+                    "AuditActionDEPRECATE",
+                    "AuditActionREJECT",
+                    "AuditActionROLLBACK",
+                    "AuditActionSUBMITFORAPPROVAL",
+                    "AuditActionUNDELETE",
+                    "AuditActionUPDATE",
+                    "AuditActionWITHDRAW"
+                ]
+            },
+            "AuditSlug": {
+                "properties": {
+                    "$schema": {
+                        "description": "JSON Schema URL for this audit slug",
+                        "type": "string"
+                    },
+                    "action": {
+                        "$ref": "#/components/schemas/AuditAction"
+                    },
+                    "checker": {
+                        "description": "User who approved/rejected (null if not applicable)",
+                        "type": "string"
+                    },
+                    "content_hash": {
+                        "description": "Hash of template/rule content for this revision",
+                        "type": "string"
+                    },
+                    "description": {
+                        "description": "Human-readable description of the change",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "effective_date": {
+                        "description": "When change becomes active",
+                        "type": "integer"
+                    },
+                    "extra_metadata": {
+                        "$ref": "#/components/schemas/AuditSlugExtraMetadata"
+                    },
+                    "id": {
+                        "description": "Unique identifier for this audit slug record",
+                        "type": "string"
+                    },
+                    "maker": {
+                        "description": "User who initiated this action",
+                        "type": "string"
+                    },
+                    "model_id": {
+                        "description": "String representation of the model's ID",
+                        "type": "string"
+                    },
+                    "model_name": {
+                        "$ref": "#/components/schemas/ModelName"
+                    },
+                    "previous_slug_id": {
+                        "description": "ID of the previous audit slug in the chain",
+                        "type": "string"
+                    },
+                    "previous_state": {
+                        "$ref": "#/components/schemas/AuditState"
+                    },
+                    "revision": {
+                        "description": "Increments with each approval cycle attempt",
+                        "type": "integer"
+                    },
+                    "site_id": {
+                        "description": "SiteID corresponds to the JSON schema field \"site_id\".",
+                        "type": "integer"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/AuditState"
+                    },
+                    "ticket_url": {
+                        "description": "Link to tracking ticket or issue",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "transition_date": {
+                        "description": "When state changed",
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "description"
+                ],
+                "type": "object"
+            },
+            "AuditSlugExtraMetadata": {
+                "description": "Additional context and metadata for the audit record",
+                "properties": {
+                    "additionalProperties": {},
+                    "approved_by_committee": {
+                        "description": "List of committee members who approved (for multi-approver scenarios)",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "change_summary": {
+                        "$ref": "#/components/schemas/AuditSlugExtraMetadataChangeSummary"
+                    },
+                    "comments": {
+                        "description": "Additional comments about the change",
+                        "maxLength": 2000,
+                        "type": "string"
+                    },
+                    "rejection_reason": {
+                        "description": "Reason for rejection (populated when action is REJECT)",
+                        "maxLength": 1000,
+                        "type": "string"
+                    },
+                    "risk_assessment": {
+                        "$ref": "#/components/schemas/AuditSlugExtraMetadataRiskAssessment"
+                    },
+                    "rollback_reason": {
+                        "description": "Reason for rollback (populated when rolling back)",
+                        "maxLength": 1000,
+                        "type": "string"
+                    },
+                    "test_results": {
+                        "additionalProperties": {},
+                        "description": "Results from validation or testing",
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "AuditSlugExtraMetadataChangeSummary": {
+                "description": "Summary of what changed in this revision",
+                "properties": {
+                    "diff": {
+                        "description": "Diff is a unified diff of the content change.",
+                        "type": "string"
+                    },
+                    "fields_modified": {
+                        "description": "FieldsModified corresponds to the JSON schema field \"fields_modified\".",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "impact_analysis": {
+                        "description": "ImpactAnalysis corresponds to the JSON schema field \"impact_analysis\".",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "AuditSlugExtraMetadataRiskAssessment": {
+                "description": "Risk level assessment for this change",
+                "enum": [
+                    "CRITICAL",
+                    "HIGH",
+                    "LOW",
+                    "MEDIUM"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "AuditSlugExtraMetadataRiskAssessmentCRITICAL",
+                    "AuditSlugExtraMetadataRiskAssessmentHIGH",
+                    "AuditSlugExtraMetadataRiskAssessmentLOW",
+                    "AuditSlugExtraMetadataRiskAssessmentMEDIUM"
+                ]
+            },
+            "AuditState": {
+                "description": "Current state after this transition",
+                "enum": [
+                    "DEPRECATED",
+                    "DELETED",
+                    "DRAFT",
+                    "LIVE",
+                    "PENDING_APPROVAL",
+                    "REJECTED"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "AuditStateDEPRECATED",
+                    "AuditStateDELETED",
+                    "AuditStateDRAFT",
+                    "AuditStateLIVE",
+                    "AuditStatePENDINGAPPROVAL",
+                    "AuditStateREJECTED"
+                ]
+            },
+            "Check": {
+                "properties": {
+                    "duration": {
+                        "type": "integer"
+                    },
+                    "last_checked": {
+                        "type": "integer"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/Status"
+                    }
+                },
+                "required": [
+                    "duration",
+                    "last_checked",
+                    "name",
+                    "status"
+                ],
+                "type": "object"
+            },
+            "DirectiveTag": {
+                "enum": [
+                    "manual_rollup_override",
+                    "skip_rollup_processing",
+                    "seed_mode"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "DirectiveManualRollupOverride",
+                    "DirectiveSkipRollupProcessing",
+                    "DirectiveSeedMode"
+                ]
+            },
+            "Event": {
+                "description": "Sample event request for testing",
+                "properties": {
+                    "$schema": {
+                        "description": "Identifier for the schema used to construct this event",
+                        "example": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+                        "type": "string"
+                    },
+                    "accounts": {
+                        "description": "Account mappings for the event. Each account must have a unique purpose value.",
+                        "items": {
+                            "$ref": "#/components/schemas/EventAccount"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "amount": {
+                        "description": "Transaction amount in minor currency units (cents, pence, satoshis)",
+                        "example": 100000,
+                        "type": "integer"
+                    },
+                    "directives": {
+                        "description": "Processing directives (unique). Replaces legacy reserved keys in extra_metadata.",
+                        "example": [
+                            "skip_rollup_processing"
+                        ],
+                        "items": {
+                            "$ref": "#/components/schemas/DirectiveTag"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "event_id": {
+                        "description": "UUID v7 for idempotency and natural time ordering (with cached string form)",
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "event_source": {
+                        "description": "System or service that originated the event",
+                        "example": "docs_example",
+                        "type": "string"
+                    },
+                    "extra_metadata": {
+                        "$ref": "#/components/schemas/ExtraMetadata"
+                    },
+                    "ledger_timestamp": {
+                        "description": "Optional event-level ledger timestamp used for seeding/backfill; distinct from occurred_at",
+                        "type": "integer"
+                    },
+                    "occurred_at": {
+                        "description": "When business event occurred",
+                        "example": 1760000000000,
+                        "type": "integer"
+                    },
+                    "original_event_id": {
+                        "description": "First event in the series (optional linkage for analytics)",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "previous_event_id": {
+                        "description": "Immediate predecessor event in the chain (optional linkage for analytics)",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "site_id": {
+                        "description": "SiteID corresponds to the JSON schema field \"site_id\".",
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "template_ids": {
+                        "description": "Array of template IDs to process atomically (ALL must succeed or ALL fail)",
+                        "example": [
+                            532
+                        ],
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "$schema",
+                    "accounts",
+                    "amount",
+                    "event_id",
+                    "event_source",
+                    "occurred_at",
+                    "site_id",
+                    "template_ids"
+                ],
+                "type": "object"
+            },
+            "EventAccount": {
+                "properties": {
+                    "account_id": {
+                        "description": "UUID of the account (with cached string form)",
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "purpose": {
+                        "description": "Account purpose matching template requirements",
+                        "example": "from_account",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "account_id",
+                    "purpose"
+                ],
+                "type": "object"
+            },
+            "ExpectedTransfer": {
+                "properties": {
+                    "amount": {
+                        "description": "Amount in minor units (must be > 0)",
+                        "example": 150000,
+                        "type": "integer"
+                    },
+                    "credit_account_id": {
+                        "description": "Credit account UUID",
+                        "example": "0192b4f0-7abc-7def-8000-000000000002",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "debit_account_id": {
+                        "description": "Debit account UUID",
+                        "example": "0192b4f0-7abc-7def-8000-000000000001",
+                        "format": "uuid",
+                        "type": "string"
+                    },
+                    "leg_number": {
+                        "description": "Template leg number that produced this transfer",
+                        "example": 1,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "amount",
+                    "credit_account_id",
+                    "debit_account_id",
+                    "leg_number"
+                ],
+                "type": "object"
+            },
+            "ExtraMetadata": {
+                "additionalProperties": true,
+                "description": "Additional context validated against template's metadata_schema",
+                "type": "object"
+            },
+            "FinancialImpact": {
+                "description": "Net impact on this account type",
+                "enum": [
+                    "any",
+                    "decrease",
+                    "decrease_or_no_impact",
+                    "increase",
+                    "increase_or_decrease",
+                    "increase_or_no_impact",
+                    "no_impact"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "FinancialImpactAny",
+                    "FinancialImpactDecrease",
+                    "FinancialImpactDecreaseOrNoImpact",
+                    "FinancialImpactIncrease",
+                    "FinancialImpactIncreaseOrDecrease",
+                    "FinancialImpactIncreaseOrNoImpact",
+                    "FinancialImpactNoImpact"
+                ]
+            },
+            "ModelName": {
+                "description": "Type of model being audited",
+                "enum": [
+                    "rule",
+                    "template",
+                    "workflow"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "ModelNameRule",
+                    "ModelNameTemplate",
+                    "ModelNameWorkflow"
+                ]
+            },
+            "PolicyRef": {
+                "properties": {
+                    "id": {
+                        "description": "Clean policy ID (no URI scheme)\nExamples: \"IFRS9.B5.4.1\", \"IAS32.DEPOSITS\", \"INT/FEES-001\"",
+                        "type": "string"
+                    },
+                    "version": {
+                        "description": "Optional explicit version (if nil, resolve active version)",
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id"
+                ],
+                "type": "object"
+            },
+            "ProblemDetails": {
+                "properties": {
+                    "detail": {
+                        "description": "A human-readable explanation specific to this occurrence of the problem.",
+                        "example": "invalid request body",
+                        "type": "string"
+                    },
+                    "errors": {
+                        "description": "Optional structured error details for field-level validation failures.",
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationErrorDetail"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "instance": {
+                        "description": "A URI reference that identifies the specific occurrence of the problem.\nThis service uses the request path.",
+                        "example": "/api/v1/templates:validate",
+                        "type": "string"
+                    },
+                    "status": {
+                        "description": "The HTTP status code generated by the origin server.",
+                        "example": 400,
+                        "type": "integer"
+                    },
+                    "title": {
+                        "description": "A short, human-readable summary of the problem type.",
+                        "example": "Invalid Request",
+                        "type": "string"
+                    },
+                    "type": {
+                        "description": "A URI reference that identifies the problem type.\nThe service uses service-scoped problem type URIs.",
+                        "example": "https://ledger-rocket.dev/accounting-rule-engine/problems/templates/invalid-request",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "Response": {
+                "properties": {
+                    "checks": {
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Check"
+                        },
+                        "type": "object"
+                    },
+                    "checks_list": {
+                        "description": "ChecksList provides a stable, human-friendly ordering of checks for UIs.\nIt mirrors the entries in Checks but in a consistent order (by name).",
+                        "items": {
+                            "properties": {
+                                "check": {
+                                    "$ref": "#/components/schemas/Check"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "check",
+                                "name"
+                            ],
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "failed_templates": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Templates that failed to load with errors",
+                        "type": "object"
+                    },
+                    "service": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/Status"
+                    },
+                    "templates": {
+                        "description": "List of loaded templates",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateInfo"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "uptime": {
+                        "description": "Uptime in seconds",
+                        "type": "integer"
+                    },
+                    "version": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "checks",
+                    "failed_templates",
+                    "service",
+                    "status",
+                    "templates",
+                    "uptime",
+                    "version"
+                ],
+                "type": "object"
+            },
+            "Status": {
+                "enum": [
+                    "healthy",
+                    "unhealthy",
+                    "unknown"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "StatusHealthy",
+                    "StatusUnhealthy",
+                    "StatusUnknown"
+                ]
+            },
+            "Template": {
+                "description": "Template corresponds to the JSON schema field \"template\".",
+                "properties": {
+                    "$schema": {
+                        "description": "Descriptor identifying the JSON schema that defines this template payload",
+                        "type": "string"
+                    },
+                    "account_code_validations": {
+                        "description": "Validations for account codes by purpose",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateAccountCodeValidation"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "accounting_treatments": {
+                        "description": "Accounting treatment classifications and policy references",
+                        "items": {
+                            "$ref": "#/components/schemas/AccountingTreatment"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "capabilities": {
+                        "description": "Capabilities toggle optional behaviours and overrides for this template.",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateCapability"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "category": {
+                        "description": "Business category for this template",
+                        "type": "string"
+                    },
+                    "description": {
+                        "description": "Detailed description of template purpose and behavior",
+                        "maxLength": 10000,
+                        "type": "string"
+                    },
+                    "event_type": {
+                        "description": "Type of event this template processes",
+                        "type": "string"
+                    },
+                    "examples": {
+                        "description": "Example scenarios for testing and documentation",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateExample"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "financial_statements_impact": {
+                        "description": "Net accounting impact on financial statements by account type",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateFinancialImpact"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "ledger_scope_descriptions": {
+                        "$ref": "#/components/schemas/TemplateLedgerScopeDescriptions"
+                    },
+                    "legs": {
+                        "description": "Transfer legs that generate the actual ledger transfers",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateLeg"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "metadata_schema": {
+                        "$ref": "#/components/schemas/TemplateMetadataSchema"
+                    },
+                    "name": {
+                        "description": "Human-readable name for the template",
+                        "maxLength": 200,
+                        "type": "string"
+                    },
+                    "product": {
+                        "description": "Product category for this template",
+                        "type": "string"
+                    },
+                    "site_id": {
+                        "description": "SiteID corresponds to the JSON schema field \"site_id\".",
+                        "type": "integer"
+                    },
+                    "template_id": {
+                        "description": "TemplateID corresponds to the JSON schema field \"template_id\".",
+                        "type": "integer"
+                    },
+                    "trigger": {
+                        "description": "Business event that triggers this template",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "validations": {
+                        "description": "Business rule validations that must all pass for the event to be processed",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateValidation"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "variables": {
+                        "description": "Variables for calculations and business logic. Evaluated sequentially, can\nreference previous variables.",
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateVariable"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "$schema",
+                    "account_code_validations",
+                    "accounting_treatments",
+                    "category",
+                    "description",
+                    "event_type",
+                    "financial_statements_impact",
+                    "legs",
+                    "metadata_schema",
+                    "name",
+                    "product",
+                    "site_id",
+                    "template_id",
+                    "trigger",
+                    "validations",
+                    "variables"
+                ],
+                "type": "object"
+            },
+            "TemplateAccountCodeValidation": {
+                "properties": {
+                    "description": {
+                        "description": "Human-readable description of the account type",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "mask": {
+                        "description": "Glob pattern for valid account codes",
+                        "maxLength": 100,
+                        "type": "string"
+                    },
+                    "purpose": {
+                        "description": "Account purpose to validate",
+                        "maxLength": 50,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "description",
+                    "mask",
+                    "purpose"
+                ],
+                "type": "object"
+            },
+            "TemplateCacheRefreshResponse": {
+                "properties": {
+                    "details": {
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateDetail"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "summary": {
+                        "$ref": "#/components/schemas/TemplateCacheRefreshResponseSummary"
+                    }
+                },
+                "type": "object"
+            },
+            "TemplateCacheRefreshResponseSummary": {
+                "properties": {
+                    "cache_total_all_sites": {
+                        "type": "integer"
+                    },
+                    "cache_total_for_site": {
+                        "type": "integer"
+                    },
+                    "mode": {
+                        "type": "string"
+                    },
+                    "refreshed_count": {
+                        "type": "integer"
+                    },
+                    "site_id": {
+                        "type": "integer"
+                    },
+                    "template_ids": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "type": "object"
+            },
+            "TemplateCapability": {
+                "enum": [
+                    "allows_fx_transfers",
+                    "allows_intercompany_transfers",
+                    "skip_account_type_validation",
+                    "skip_financial_statements_impact_validation"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TemplateCapabilityAllowsFXTransfers",
+                    "TemplateCapabilityAllowsIntercompanyTransfers",
+                    "TemplateCapabilitySkipAccountTypeValidation",
+                    "TemplateCapabilitySkipFinancialStatementsImpactValidation"
+                ]
+            },
+            "TemplateDetail": {
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "site_id": {
+                        "type": "integer"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/TemplateDetailStatus"
+                    },
+                    "template_id": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "message",
+                    "site_id",
+                    "status",
+                    "template_id"
+                ],
+                "type": "object"
+            },
+            "TemplateDetailStatus": {
+                "enum": [
+                    "loaded",
+                    "error",
+                    "skipped"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TemplateDetailStatusLoaded",
+                    "TemplateDetailStatusError",
+                    "TemplateDetailStatusSkipped"
+                ]
+            },
+            "TemplateExample": {
+                "properties": {
+                    "description": {
+                        "description": "Human-readable description of the example scenario",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "event_request": {
+                        "$ref": "#/components/schemas/Event"
+                    },
+                    "expected_transfers": {
+                        "description": "Expected transfers that should be generated for validation",
+                        "items": {
+                            "$ref": "#/components/schemas/ExpectedTransfer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "name": {
+                        "description": "Name of the example scenario",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "event_request",
+                    "expected_transfers",
+                    "name"
+                ],
+                "type": "object"
+            },
+            "TemplateFinancialImpact": {
+                "properties": {
+                    "account_type": {
+                        "$ref": "#/components/schemas/AccountType"
+                    },
+                    "description": {
+                        "description": "Human-readable description explaining the business context of this impact",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "impact": {
+                        "$ref": "#/components/schemas/FinancialImpact"
+                    },
+                    "ledger_scope": {
+                        "description": "Ledger scope identifier. Must be lower_snake_case and match an entry in ledger_scope_descriptions.\n@pattern ^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "account_type",
+                    "description",
+                    "impact",
+                    "ledger_scope"
+                ],
+                "type": "object"
+            },
+            "TemplateInfo": {
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "type": "object"
+            },
+            "TemplateLedgerScopeDescriptions": {
+                "additionalProperties": {
+                    "type": "string"
+                },
+                "description": "Human-readable descriptions for each ledger scope used by this template",
+                "type": "object"
+            },
+            "TemplateLeg": {
+                "properties": {
+                    "amount": {
+                        "description": "Reference for the transfer amount (variable or direct selector)",
+                        "type": "string"
+                    },
+                    "condition": {
+                        "description": "Optional reference to a boolean controlling conditional execution",
+                        "type": "string"
+                    },
+                    "credit_account": {
+                        "description": "Reference for the credit account (variable or direct selector)",
+                        "type": "string"
+                    },
+                    "credit_account_type": {
+                        "$ref": "#/components/schemas/AccountType"
+                    },
+                    "debit_account": {
+                        "description": "Reference for the debit account (variable or direct selector)",
+                        "type": "string"
+                    },
+                    "debit_account_type": {
+                        "$ref": "#/components/schemas/AccountType"
+                    },
+                    "description": {
+                        "description": "Human-readable description of this leg's purpose",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "ledger_scope": {
+                        "description": "Ledger scope identifier. Must be lower_snake_case and match an entry in ledger_scope_descriptions.\n@pattern ^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
+                        "type": "string"
+                    },
+                    "leg_number": {
+                        "description": "Sequential identifier for the leg",
+                        "type": "integer"
+                    },
+                    "treatment_type": {
+                        "$ref": "#/components/schemas/TreatmentType"
+                    }
+                },
+                "required": [
+                    "amount",
+                    "credit_account",
+                    "credit_account_type",
+                    "debit_account",
+                    "debit_account_type",
+                    "description",
+                    "ledger_scope",
+                    "leg_number",
+                    "treatment_type"
+                ],
+                "type": "object"
+            },
+            "TemplateMetadata": {
+                "description": "Template metadata for debugging purposes",
+                "properties": {
+                    "example_count": {
+                        "description": "Number of examples provided",
+                        "type": "integer"
+                    },
+                    "leg_count": {
+                        "description": "Number of legs in the template",
+                        "type": "integer"
+                    },
+                    "name": {
+                        "description": "Template name",
+                        "type": "string"
+                    },
+                    "template_id": {
+                        "description": "Template ID",
+                        "type": "integer"
+                    },
+                    "validation_count": {
+                        "description": "Number of validation rules",
+                        "type": "integer"
+                    },
+                    "variable_count": {
+                        "description": "Number of variables defined",
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "example_count",
+                    "leg_count",
+                    "name",
+                    "template_id",
+                    "validation_count",
+                    "variable_count"
+                ],
+                "type": "object"
+            },
+            "TemplateMetadataSchema": {
+                "description": "JSON Schema for validating event's extra_metadata field",
+                "properties": {
+                    "$schema": {
+                        "description": "Schema corresponds to the JSON schema field \"$schema\".",
+                        "type": "string"
+                    },
+                    "additionalProperties": {
+                        "description": "AdditionalProperties corresponds to the JSON schema field\n\"additionalProperties\".",
+                        "type": "boolean"
+                    },
+                    "properties": {
+                        "additionalProperties": {},
+                        "description": "Properties corresponds to the JSON schema field \"properties\".",
+                        "type": "object"
+                    },
+                    "required": {
+                        "description": "Required corresponds to the JSON schema field \"required\".",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "type": {
+                        "description": "Type corresponds to the JSON schema field \"type\".",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "properties",
+                    "type"
+                ],
+                "type": "object"
+            },
+            "TemplatePutResponse": {
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "site_id": {
+                        "type": "integer"
+                    },
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "template_id": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "TemplateResponse": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/TemplateStatus"
+                    },
+                    "template": {
+                        "$ref": "#/components/schemas/Template"
+                    }
+                },
+                "required": [
+                    "status",
+                    "template"
+                ],
+                "type": "object"
+            },
+            "TemplateSiteStatusResponse": {
+                "properties": {
+                    "failed_templates": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object"
+                    },
+                    "failed_templates_n": {
+                        "type": "integer"
+                    },
+                    "last_reload_time": {
+                        "type": "string"
+                    },
+                    "site_id": {
+                        "type": "integer"
+                    },
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "templates_loaded": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "TemplateStatus": {
+                "properties": {
+                    "checker": {
+                        "type": "string"
+                    },
+                    "content_hash": {
+                        "type": "string"
+                    },
+                    "effective_date": {
+                        "type": "integer"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "is_executable": {
+                        "type": "boolean"
+                    },
+                    "maker": {
+                        "type": "string"
+                    },
+                    "revision": {
+                        "type": "integer"
+                    },
+                    "slug_id": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/AuditState"
+                    },
+                    "transition_date": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "TemplateValidation": {
+                "properties": {
+                    "description": {
+                        "description": "Human-readable description of what this validation ensures",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "expression": {
+                        "description": "CEL expression that must evaluate to true",
+                        "maxLength": 1000,
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Validation rule name",
+                        "maxLength": 100,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "description",
+                    "expression",
+                    "name"
+                ],
+                "type": "object"
+            },
+            "TemplateValidationsPostRequest": {
+                "properties": {
+                    "template": {
+                        "$ref": "#/components/schemas/Template"
+                    }
+                },
+                "required": [
+                    "template"
+                ],
+                "type": "object"
+            },
+            "TemplateValidationsPostResponse": {
+                "properties": {
+                    "auto_generated": {
+                        "description": "True if expected_transfers were auto-generated from the event_request",
+                        "type": "boolean"
+                    },
+                    "comparison_errors": {
+                        "description": "Differences between expected and actual transfers",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "generated_expected_transfers": {
+                        "description": "Generated transfers in sparse expected-transfer format if event_request was provided",
+                        "items": {
+                            "$ref": "#/components/schemas/ExpectedTransfer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/TemplateValidationsPostResponseStatus"
+                    },
+                    "template_metadata": {
+                        "$ref": "#/components/schemas/TemplateMetadata"
+                    },
+                    "validation_details": {
+                        "description": "Structured validation error details with enhanced information",
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationErrorDetail"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "validation_errors": {
+                        "description": "List of validation errors if any, provided in simple string form",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "status",
+                    "validation_errors"
+                ],
+                "type": "object"
+            },
+            "TemplateValidationsPostResponseStatus": {
+                "description": "Overall validation status",
+                "enum": [
+                    "INVALID",
+                    "VALID"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TemplateValidationsPostResponseStatusINVALID",
+                    "TemplateValidationsPostResponseStatusVALID"
+                ]
+            },
+            "TemplateVariable": {
+                "properties": {
+                    "description": {
+                        "description": "Human-readable description of what this variable represents",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Variable name used in legs and other expressions",
+                        "maxLength": 100,
+                        "type": "string"
+                    },
+                    "value": {
+                        "description": "CEL expression to calculate the variable value",
+                        "maxLength": 1000,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "description",
+                    "name",
+                    "value"
+                ],
+                "type": "object"
+            },
+            "TemplateWithStatus": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/TemplateStatus"
+                    },
+                    "template": {
+                        "$ref": "#/components/schemas/Template"
+                    }
+                },
+                "required": [
+                    "status",
+                    "template"
+                ],
+                "type": "object"
+            },
+            "TemplatesListResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer"
+                    },
+                    "templates": {
+                        "items": {
+                            "$ref": "#/components/schemas/TemplateWithStatus"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "count",
+                    "templates"
+                ],
+                "type": "object"
+            },
+            "TreatmentType": {
+                "description": "Accounting treatment type for this leg - must match one of the template's accounting_treatments",
+                "enum": [
+                    "cash_movement",
+                    "settlement_clearing",
+                    "refund_reversal",
+                    "fee_revenue",
+                    "fee_cost",
+                    "fee_accrual",
+                    "payable_recognition",
+                    "receivable_recognition",
+                    "accrual_interest_income",
+                    "accrual_interest_expense",
+                    "impairment_provision",
+                    "impairment_release",
+                    "write_off",
+                    "recovery_post_writeoff",
+                    "accrual_non_interest",
+                    "amortisation_non_interest",
+                    "interest_capitalisation",
+                    "loan_principal_disbursement",
+                    "loan_principal_repayment",
+                    "customer_deposit_receipt",
+                    "customer_withdrawal",
+                    "internal_transfer",
+                    "opening_balance_adjustment",
+                    "system_correction",
+                    "adjustment_manual",
+                    "period_close_allocation",
+                    "revaluation_fx",
+                    "realized_fx",
+                    "revaluation_fair_value",
+                    "realized_fair_value",
+                    "hedge_cash_flow_reserve",
+                    "hedge_fair_value_adjustment",
+                    "day_one_pnl",
+                    "capital_injection",
+                    "capital_redemption",
+                    "dividend_distribution",
+                    "tax_revenue",
+                    "tax_expense",
+                    "withholding_tax",
+                    "chargeback",
+                    "representment",
+                    "fee_rebate",
+                    "commission_revenue",
+                    "commission_cost",
+                    "coupon_income",
+                    "coupon_expense",
+                    "dividend_income",
+                    "repo_interest_expense",
+                    "reverse_repo_interest_income",
+                    "stock_borrow_fee",
+                    "stock_lend_rebate",
+                    "corporate_action_adjustment",
+                    "fail_to_deliver_penalty",
+                    "fail_to_receive_penalty",
+                    "derivative_initial_margin",
+                    "derivative_variation_margin",
+                    "collateral_pledge",
+                    "collateral_receive",
+                    "collateral_interest",
+                    "cva_adjustment",
+                    "dva_adjustment",
+                    "fva_adjustment",
+                    "crypto_network_fee",
+                    "crypto_staking_reward_income",
+                    "crypto_staking_slash_expense",
+                    "crypto_custody_fee_cost",
+                    "crypto_airdrop_income",
+                    "crypto_burn_adjustment",
+                    "crypto_chain_reorg_adjustment",
+                    "investment_principal_purchase",
+                    "investment_principal_sale"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TreatmentTypeCashMovement",
+                    "TreatmentTypeSettlementClearing",
+                    "TreatmentTypeRefundReversal",
+                    "TreatmentTypeFeeRevenue",
+                    "TreatmentTypeFeeCost",
+                    "TreatmentTypeFeeAccrual",
+                    "TreatmentTypePayableRecognition",
+                    "TreatmentTypeReceivableRecognition",
+                    "TreatmentTypeAccrualInterestIncome",
+                    "TreatmentTypeAccrualInterestExpense",
+                    "TreatmentTypeImpairmentProvision",
+                    "TreatmentTypeImpairmentRelease",
+                    "TreatmentTypeWriteOff",
+                    "TreatmentTypeRecoveryPostWriteOff",
+                    "TreatmentTypeAccrualNonInterest",
+                    "TreatmentTypeAmortisationNonInterest",
+                    "TreatmentTypeInterestCapitalisation",
+                    "TreatmentTypeLoanPrincipalDisbursement",
+                    "TreatmentTypeLoanPrincipalRepayment",
+                    "TreatmentTypeCustomerDepositReceipt",
+                    "TreatmentTypeCustomerWithdrawal",
+                    "TreatmentTypeInternalTransfer",
+                    "TreatmentTypeOpeningBalanceAdjustment",
+                    "TreatmentTypeSystemCorrection",
+                    "TreatmentTypeAdjustmentManual",
+                    "TreatmentTypePeriodCloseAllocation",
+                    "TreatmentTypeRevaluationFX",
+                    "TreatmentTypeRealizedFX",
+                    "TreatmentTypeRevaluationFairValue",
+                    "TreatmentTypeRealizedFairValue",
+                    "TreatmentTypeHedgeCashFlowReserve",
+                    "TreatmentTypeHedgeFairValueAdjustment",
+                    "TreatmentTypeDayOnePNL",
+                    "TreatmentTypeCapitalInjection",
+                    "TreatmentTypeCapitalRedemption",
+                    "TreatmentTypeDividendDistribution",
+                    "TreatmentTypeTaxRevenue",
+                    "TreatmentTypeTaxExpense",
+                    "TreatmentTypeWithholdingTax",
+                    "TreatmentTypeChargeback",
+                    "TreatmentTypeRepresentment",
+                    "TreatmentTypeFeeRebate",
+                    "TreatmentTypeCommissionRevenue",
+                    "TreatmentTypeCommissionCost",
+                    "TreatmentTypeCouponIncome",
+                    "TreatmentTypeCouponExpense",
+                    "TreatmentTypeDividendIncome",
+                    "TreatmentTypeRepoInterestExpense",
+                    "TreatmentTypeReverseRepoInterestIncome",
+                    "TreatmentTypeStockBorrowFee",
+                    "TreatmentTypeStockLendRebate",
+                    "TreatmentTypeCorporateActionAdjustment",
+                    "TreatmentTypeFailToDeliverPenalty",
+                    "TreatmentTypeFailToReceivePenalty",
+                    "TreatmentTypeDerivativeInitialMargin",
+                    "TreatmentTypeDerivativeVariationMargin",
+                    "TreatmentTypeCollateralPledge",
+                    "TreatmentTypeCollateralReceive",
+                    "TreatmentTypeCollateralInterest",
+                    "TreatmentTypeCVAAdjustment",
+                    "TreatmentTypeDVAAdjustment",
+                    "TreatmentTypeFVAAdjustment",
+                    "TreatmentTypeCryptoNetworkFee",
+                    "TreatmentTypeCryptoStakingRewardIncome",
+                    "TreatmentTypeCryptoStakingSlashExpense",
+                    "TreatmentTypeCryptoCustodyFeeCost",
+                    "TreatmentTypeCryptoAirdropIncome",
+                    "TreatmentTypeCryptoBurnAdjustment",
+                    "TreatmentTypeCryptoChainReorgAdjustment",
+                    "TreatmentTypeInvestmentPrincipalPurchase",
+                    "TreatmentTypeInvestmentPrincipalSale"
+                ]
+            },
+            "ValidationErrorCategory": {
+                "description": "Error category for classification",
+                "enum": [
+                    "JSON_STRUCTURE",
+                    "CEL_EXPRESSION",
+                    "BUSINESS_LOGIC",
+                    "REFERENCE",
+                    "TYPE",
+                    "RANGE",
+                    "LINT"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "ValidationErrorCategoryJSONSTRUCTURE",
+                    "ValidationErrorCategoryCELEXPRESSION",
+                    "ValidationErrorCategoryBUSINESSLOGIC",
+                    "ValidationErrorCategoryREFERENCE",
+                    "ValidationErrorCategoryTYPE",
+                    "ValidationErrorCategoryRANGE",
+                    "ValidationErrorCategoryLINT"
+                ]
+            },
+            "ValidationErrorDetail": {
+                "properties": {
+                    "category": {
+                        "$ref": "#/components/schemas/ValidationErrorCategory"
+                    },
+                    "details": {
+                        "description": "Technical details for debugging (optional)",
+                        "type": "string"
+                    },
+                    "field_path": {
+                        "description": "Field path where the error occurred (e.g., \"variables[0].expression\", \"legs[2].amount\")",
+                        "type": "string"
+                    },
+                    "invalid_value": {
+                        "description": "The problematic value that caused the error (if applicable)",
+                        "type": "string"
+                    },
+                    "location": {
+                        "$ref": "#/components/schemas/ValidationErrorLocation"
+                    },
+                    "message": {
+                        "description": "Human-readable error message",
+                        "type": "string"
+                    },
+                    "suggestion": {
+                        "description": "Suggested fix or action to resolve the error",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "category",
+                    "message"
+                ],
+                "type": "object"
+            },
+            "ValidationErrorLocation": {
+                "description": "Line/column information for CEL expressions (if applicable)",
+                "properties": {
+                    "column": {
+                        "description": "Column number (1-based)",
+                        "type": "integer"
+                    },
+                    "line": {
+                        "description": "Line number (1-based)",
+                        "type": "integer"
+                    },
+                    "position": {
+                        "description": "Character position in the expression (0-based)",
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "WorkflowDefinition": {
+                "properties": {
+                    "$schema": {
+                        "description": "Descriptor identifying the JSON schema that defines this workflow payload.",
+                        "type": "string"
+                    },
+                    "code": {
+                        "description": "User-specified kebab-case slug, unique per site.",
+                        "maxLength": 100,
+                        "type": "string"
+                    },
+                    "description": {
+                        "description": "Detailed description of the workflow purpose.",
+                        "maxLength": 10000,
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Human-readable name.",
+                        "maxLength": 200,
+                        "type": "string"
+                    },
+                    "require_shared_ledgers": {
+                        "description": "When true, all steps in the workflow share a common set of ledgers.",
+                        "type": "boolean"
+                    },
+                    "site_id": {
+                        "description": "Tenant identifier.",
+                        "type": "integer"
+                    },
+                    "steps": {
+                        "description": "Ordered list of template execution steps.",
+                        "items": {
+                            "$ref": "#/components/schemas/WorkflowStep"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "workflow_id": {
+                        "description": "Server-generated UUIDv7 identifier.",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "$schema",
+                    "code",
+                    "description",
+                    "name",
+                    "site_id",
+                    "steps",
+                    "workflow_id"
+                ],
+                "type": "object"
+            },
+            "WorkflowMakerCheckerRequest": {
+                "description": "Request body for approve, reject, and deprecate operations.",
+                "properties": {
+                    "description": {
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "effective_date": {
+                        "type": "integer"
+                    },
+                    "rejection_reason": {
+                        "maxLength": 1000,
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "WorkflowMakerReasonRequest": {
+                "description": "Request body for withdraw, delete, and undelete operations.",
+                "properties": {
+                    "reason": {
+                        "maxLength": 500,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "reason"
+                ],
+                "type": "object"
+            },
+            "WorkflowResponse": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/AuditState"
+                    },
+                    "workflow": {
+                        "$ref": "#/components/schemas/WorkflowDefinition"
+                    }
+                },
+                "required": [
+                    "status",
+                    "workflow"
+                ],
+                "type": "object"
+            },
+            "WorkflowStep": {
+                "properties": {
+                    "condition": {
+                        "description": "Optional condition expression evaluated by the orchestrator to decide\nwhether this step fires. Syntax is orchestrator-defined.",
+                        "type": "string"
+                    },
+                    "condition_description": {
+                        "description": "Prose description of what Condition means. Required when Condition is set.",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "depends_on_step_ids": {
+                        "description": "Explicit DAG dependencies for this step. Must always be present, even if empty.",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "description": {
+                        "description": "Optional human-readable description of this step's purpose.",
+                        "maxLength": 2000,
+                        "type": "string"
+                    },
+                    "diagram_label": {
+                        "description": "Exact human-readable label to use for Mermaid/UI rendering.",
+                        "maxLength": 200,
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "event_sources": {
+                        "description": "Systems or services whose events trigger this step.",
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "examples": {
+                        "description": "Zero-based indices into the referenced template's Examples slice.\nUsed by GUI diagram rendering to select which example scenarios to display.",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "group": {
+                        "description": "Visual stage/group this step belongs to.",
+                        "maxLength": 200,
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "id": {
+                        "description": "Snake_case identifier for this step, referenced by expressions in later steps.",
+                        "maxLength": 50,
+                        "type": "string"
+                    },
+                    "inputs": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Input bindings: map of input field name to literal value or\n${{ steps.<step_id>.outputs.<key> }} expression.",
+                        "type": "object"
+                    },
+                    "repeat_while": {
+                        "description": "Optional expression evaluated by the orchestrator to repeat this step.\nSyntax is orchestrator-defined.",
+                        "type": "string"
+                    },
+                    "repeat_while_description": {
+                        "description": "Prose description of what RepeatWhile means. Required when RepeatWhile is set.",
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "template_id": {
+                        "description": "Template to execute for this step.",
+                        "type": "integer"
+                    },
+                    "trigger": {
+                        "description": "Optional trigger override hint for the orchestrator (e.g. \"on webhook received\").",
+                        "maxLength": 500,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "depends_on_step_ids",
+                    "diagram_label",
+                    "event_sources",
+                    "examples",
+                    "group",
+                    "id",
+                    "template_id"
+                ],
+                "type": "object"
+            },
+            "WorkflowSubmitRequest": {
+                "description": "Request body for workflow submission.",
+                "properties": {
+                    "description": {
+                        "maxLength": 500,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "description"
+                ],
+                "type": "object"
+            },
+            "WorkflowWithStatus": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/AuditState"
+                    },
+                    "workflow": {
+                        "$ref": "#/components/schemas/WorkflowDefinition"
+                    }
+                },
+                "type": "object"
+            },
+            "WorkflowsListResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer"
+                    },
+                    "workflows": {
+                        "items": {
+                            "$ref": "#/components/schemas/WorkflowWithStatus"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "count",
+                    "workflows"
+                ],
+                "type": "object"
+            },
+            "deleteTemplateRequestBody": {
+                "description": "Request body for template deletion.",
+                "properties": {
+                    "reason": {
+                        "maxLength": 500,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "reason"
+                ],
+                "type": "object"
+            },
+            "makerCheckerRequestBody": {
+                "description": "Request body for approve and deprecate operations requiring maker-checker separation.",
+                "properties": {
+                    "description": {
+                        "maxLength": 500,
+                        "type": "string"
+                    },
+                    "effective_date": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "description"
+                ],
+                "type": "object"
+            },
+            "rejectTemplateRequestBody": {
+                "description": "Request body for template rejection.",
+                "properties": {
+                    "rejection_reason": {
+                        "maxLength": 1000,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "rejection_reason"
+                ],
+                "type": "object"
+            },
+            "submitTemplateRequestBody": {
+                "description": "Request body for template submission.",
+                "properties": {
+                    "description": {
+                        "maxLength": 500,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "description"
+                ],
+                "type": "object"
+            },
+            "templateCacheRefreshRequestBody": {
+                "description": "Request body for template cache refresh operations.",
+                "properties": {
+                    "template_ids": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "type": "object"
+            },
+            "undeleteTemplateRequestBody": {
+                "description": "Request body for template undeletion.",
+                "properties": {
+                    "reason": {
+                        "maxLength": 500,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "reason"
+                ],
+                "type": "object"
+            },
+            "withdrawTemplateRequestBody": {
+                "description": "Request body for template withdrawal.",
+                "properties": {
+                    "reason": {
+                        "maxLength": 500,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "reason"
+                ],
+                "type": "object"
+            }
+        }
+    },
+    "externalDocs": {
+        "description": "",
+        "url": ""
+    },
+    "info": {
+        "description": "# Accounting Rule Engine API\n\nThis service manages templates and rules.\n\nIt does not process events or submit transfers.\n",
+        "title": "",
+        "version": "1.16.1"
+    },
+    "openapi": "3.1.0",
+    "paths": {
+        "/api/v1/sites/{site_id}/templates": {
+            "get": {
+                "description": "Retrieves all templates configured for a given site",
+                "operationId": "getTemplates",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TemplatesListResponse"
+                                }
+                            }
+                        },
+                        "description": "Templates found"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid site_id"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "List all templates for a site",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates/{template_id}": {
+            "get": {
+                "description": "Retrieves a specific template for a given site",
+                "operationId": "getTemplate",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Template ID",
+                        "in": "path",
+                        "name": "template_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TemplateResponse"
+                                }
+                            }
+                        },
+                        "description": "Template found"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Invalid site_id or template_id"
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Template not found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "summary": "Get a single template by ID",
+                "tags": [
+                    "Templates"
+                ]
+            },
+            "put": {
+                "description": "Validates and stores the template payload. Body site_id/template_id MUST match the path.",
+                "operationId": "putTemplate",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Template ID",
+                        "in": "path",
+                        "name": "template_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Template",
+                                "description": "Template payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Template payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TemplatePutResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TemplatePutResponse"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "409": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    },
+                    "503": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Service Unavailable"
+                    }
+                },
+                "summary": "Put template",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates/{template_id}/approve": {
+            "post": {
+                "description": "Validates and approves a template, creating a LIVE audit slug and reloading the template.",
+                "operationId": "approveTemplate",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Template ID",
+                        "in": "path",
+                        "name": "template_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/makerCheckerRequestBody",
+                                "description": "Approval payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Approval payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Approve template",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates/{template_id}/audit-slugs": {
+            "get": {
+                "description": "Returns all audit slugs for the specified template, newest first.",
+                "operationId": "getTemplateAuditSlugs",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Template ID",
+                        "in": "path",
+                        "name": "template_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/AuditSlug"
+                                    },
+                                    "type": "array"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "List template audit slugs",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates/{template_id}/delete": {
+            "post": {
+                "description": "Deletes a DRAFT template, creating a DELETED audit slug and reloading the template.",
+                "operationId": "deleteTemplate",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Template ID",
+                        "in": "path",
+                        "name": "template_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/deleteTemplateRequestBody",
+                                "description": "Delete payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Delete payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Delete template",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates/{template_id}/deprecate": {
+            "post": {
+                "description": "Deprecates a LIVE template, creating a DEPRECATED audit slug and reloading the template.",
+                "operationId": "deprecateTemplate",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Template ID",
+                        "in": "path",
+                        "name": "template_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/makerCheckerRequestBody",
+                                "description": "Deprecation payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Deprecation payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Deprecate template",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates/{template_id}/reject": {
+            "post": {
+                "description": "Rejects a pending template, creating a REJECTED audit slug and reloading the template.",
+                "operationId": "rejectTemplate",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Template ID",
+                        "in": "path",
+                        "name": "template_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/rejectTemplateRequestBody",
+                                "description": "Rejection payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Rejection payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Reject template",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates/{template_id}/submit": {
+            "post": {
+                "description": "Validates and submits a template, creating a PENDING_APPROVAL audit slug and reloading the template.",
+                "operationId": "submitTemplate",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Template ID",
+                        "in": "path",
+                        "name": "template_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/submitTemplateRequestBody",
+                                "description": "Submission payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Submission payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Submit template",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates/{template_id}/undelete": {
+            "post": {
+                "description": "Restores a DELETED template back to DRAFT and reloads the template.",
+                "operationId": "undeleteTemplate",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Template ID",
+                        "in": "path",
+                        "name": "template_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/undeleteTemplateRequestBody",
+                                "description": "Undelete payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Undelete payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Undelete template",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates/{template_id}/withdraw": {
+            "post": {
+                "description": "Withdraws a pending submission back to DRAFT.",
+                "operationId": "withdrawTemplate",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Template ID",
+                        "in": "path",
+                        "name": "template_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 65535,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/withdrawTemplateRequestBody",
+                                "description": "Withdraw payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Withdraw payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Withdraw template",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates:refresh-cache": {
+            "post": {
+                "description": "Reloads templates for a site from the configured store. If template_ids is omitted, reloads all templates for the site.",
+                "operationId": "refreshTemplateCache",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/templateCacheRefreshRequestBody",
+                                "description": "Optional: reload only specified template IDs",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Optional: reload only specified template IDs"
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TemplateCacheRefreshResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Refresh template cache",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/templates:status": {
+            "get": {
+                "description": "Returns template cache status for a site.",
+                "operationId": "getTemplateSiteStatus",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TemplateSiteStatusResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Template loader status (site-scoped)",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/workflows": {
+            "get": {
+                "description": "Returns all workflow definitions for a site with their lifecycle status.",
+                "operationId": "getWorkflows",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WorkflowsListResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "List workflows",
+                "tags": [
+                    "Workflows"
+                ]
+            },
+            "post": {
+                "description": "Creates a new workflow definition with a server-generated UUIDv7. The workflow starts in DRAFT state.",
+                "operationId": "createWorkflow",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowDefinition",
+                                "description": "Workflow definition",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Workflow definition",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WorkflowResponse"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "409": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "422": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Unprocessable Entity"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Create workflow",
+                "tags": [
+                    "Workflows"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/workflows/{workflow_id}": {
+            "get": {
+                "description": "Retrieves a workflow definition with its lifecycle status.",
+                "operationId": "getWorkflow",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Workflow ID (UUIDv7)",
+                        "in": "path",
+                        "name": "workflow_id",
+                        "required": true,
+                        "schema": {
+                            "format": "uuid",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WorkflowResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Get workflow",
+                "tags": [
+                    "Workflows"
+                ]
+            },
+            "put": {
+                "description": "Validates and overwrites an existing workflow definition. Body site_id and workflow_id MUST match path.",
+                "operationId": "updateWorkflow",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Workflow ID (UUIDv7)",
+                        "in": "path",
+                        "name": "workflow_id",
+                        "required": true,
+                        "schema": {
+                            "format": "uuid",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowDefinition",
+                                "description": "Workflow definition",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Workflow definition",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WorkflowResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "422": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Unprocessable Entity"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Update workflow",
+                "tags": [
+                    "Workflows"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/workflows/{workflow_id}/approve": {
+            "post": {
+                "description": "Approves a pending workflow, creating a LIVE audit slug.",
+                "operationId": "approveWorkflow",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Workflow ID (UUIDv7)",
+                        "in": "path",
+                        "name": "workflow_id",
+                        "required": true,
+                        "schema": {
+                            "format": "uuid",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowMakerCheckerRequest",
+                                "description": "Approval payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Approval payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Approve workflow",
+                "tags": [
+                    "Workflows"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/workflows/{workflow_id}/audit-slugs": {
+            "get": {
+                "description": "Returns all audit slugs for the specified workflow, newest first.",
+                "operationId": "getWorkflowAuditSlugs",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Workflow ID (UUIDv7)",
+                        "in": "path",
+                        "name": "workflow_id",
+                        "required": true,
+                        "schema": {
+                            "format": "uuid",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/AuditSlug"
+                                    },
+                                    "type": "array"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "List workflow audit slugs",
+                "tags": [
+                    "Workflows"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/workflows/{workflow_id}/delete": {
+            "post": {
+                "description": "Deletes a DRAFT workflow, creating a DELETED audit slug.",
+                "operationId": "deleteWorkflow",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Workflow ID (UUIDv7)",
+                        "in": "path",
+                        "name": "workflow_id",
+                        "required": true,
+                        "schema": {
+                            "format": "uuid",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowMakerReasonRequest",
+                                "description": "Delete payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Delete payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Delete workflow",
+                "tags": [
+                    "Workflows"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/workflows/{workflow_id}/deprecate": {
+            "post": {
+                "description": "Deprecates a LIVE workflow, creating a DEPRECATED audit slug.",
+                "operationId": "deprecateWorkflow",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Workflow ID (UUIDv7)",
+                        "in": "path",
+                        "name": "workflow_id",
+                        "required": true,
+                        "schema": {
+                            "format": "uuid",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowMakerCheckerRequest",
+                                "description": "Deprecation payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Deprecation payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Deprecate workflow",
+                "tags": [
+                    "Workflows"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/workflows/{workflow_id}/reject": {
+            "post": {
+                "description": "Rejects a pending workflow, creating a REJECTED audit slug.",
+                "operationId": "rejectWorkflow",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Workflow ID (UUIDv7)",
+                        "in": "path",
+                        "name": "workflow_id",
+                        "required": true,
+                        "schema": {
+                            "format": "uuid",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowMakerCheckerRequest",
+                                "description": "Rejection payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Rejection payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Reject workflow",
+                "tags": [
+                    "Workflows"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/workflows/{workflow_id}/submit": {
+            "post": {
+                "description": "Submits a workflow for approval, creating a PENDING_APPROVAL audit slug.",
+                "operationId": "submitWorkflow",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Workflow ID (UUIDv7)",
+                        "in": "path",
+                        "name": "workflow_id",
+                        "required": true,
+                        "schema": {
+                            "format": "uuid",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowSubmitRequest",
+                                "description": "Submission payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Submission payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Submit workflow",
+                "tags": [
+                    "Workflows"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/workflows/{workflow_id}/undelete": {
+            "post": {
+                "description": "Restores a DELETED workflow back to DRAFT.",
+                "operationId": "undeleteWorkflow",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Workflow ID (UUIDv7)",
+                        "in": "path",
+                        "name": "workflow_id",
+                        "required": true,
+                        "schema": {
+                            "format": "uuid",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowMakerReasonRequest",
+                                "description": "Undelete payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Undelete payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Undelete workflow",
+                "tags": [
+                    "Workflows"
+                ]
+            }
+        },
+        "/api/v1/sites/{site_id}/workflows/{workflow_id}/withdraw": {
+            "post": {
+                "description": "Withdraws a pending submission back to DRAFT.",
+                "operationId": "withdrawWorkflow",
+                "parameters": [
+                    {
+                        "description": "Site ID",
+                        "in": "path",
+                        "name": "site_id",
+                        "required": true,
+                        "schema": {
+                            "maximum": 4294967295,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Workflow ID (UUIDv7)",
+                        "in": "path",
+                        "name": "workflow_id",
+                        "required": true,
+                        "schema": {
+                            "format": "uuid",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowMakerReasonRequest",
+                                "description": "Withdraw payload",
+                                "summary": "payload"
+                            }
+                        }
+                    },
+                    "description": "Withdraw payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditSlug"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Withdraw workflow",
+                "tags": [
+                    "Workflows"
+                ]
+            }
+        },
+        "/api/v1/templates:validate": {
+            "post": {
+                "description": "Validates template structure and rules using static analysis and optional runtime validation",
+                "operationId": "validateTemplate",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TemplateValidationsPostRequest",
+                                "description": "Template validation request",
+                                "summary": "request"
+                            }
+                        }
+                    },
+                    "description": "Template validation request",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TemplateValidationsPostResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "503": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Service Unavailable"
+                    }
+                },
+                "summary": "Validate template",
+                "tags": [
+                    "Templates"
+                ]
+            }
+        },
+        "/livez": {
+            "get": {
+                "description": "Simple health check that only fails if service is shutting down. Used by load balancers to determine if service should receive traffic.",
+                "operationId": "getLivez",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Response"
+                                }
+                            }
+                        },
+                        "description": "Service is alive"
+                    },
+                    "503": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Service is shutting down"
+                    }
+                },
+                "summary": "Liveness probe",
+                "tags": [
+                    "Health"
+                ]
+            }
+        },
+        "/readyz": {
+            "get": {
+                "description": "Checks all configured dependencies (Template Store). Fails if ANY dependency is unhealthy. Used to determine if service is ready to handle requests.",
+                "operationId": "getReadyz",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Response"
+                                }
+                            }
+                        },
+                        "description": "Service is ready"
+                    },
+                    "503": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": "Service is not ready (dependency failure)"
+                    }
+                },
+                "summary": "Readiness probe",
+                "tags": [
+                    "Health"
+                ]
+            }
+        }
+    },
+    "servers": [
+        {
+            "url": "/v2/accounting-rule-engine"
+        }
+    ]
+}

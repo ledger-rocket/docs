@@ -1,0 +1,129 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5609,
+    "name": "sweep_recon_clearing_pbx",
+    "description": "UC6 Step 9: Reconciliation event (clearing) for Program Bank X side. Zero out Program Bank X Clearing (10201) to Program Bank X Suspense (10203) on the economic ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: PBX Clearing to PBX Suspense. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation event (clearing) -- matching engine pairs PBX sweep clearing against bank statement.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "operational": "Operational ledger (ID 5001) where PBX clearing is flushed to suspense."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Flush PBX clearing balance to suspense for bank payment reconciliation."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Program Bank X Suspense asset; debited to absorb clearing balance.",
+        "mask": "10203",
+        "purpose": "pbx_suspense"
+      },
+      {
+        "description": "Program Bank X Clearing asset; credited to zero clearing position.",
+        "mask": "10201",
+        "purpose": "pbx_clearing"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "recon_id": {
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Reconciliation event identifier.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "recon_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.pbx_clearing.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.pbx_suspense.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Flush PBX clearing into suspense for bank statement matching.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5609
+          ],
+          "event_id": "01956090-0000-7609-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-clr-pbx-001"
+          },
+          "occurred_at": 1772963200000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000008",
+              "purpose": "pbx_suspense"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000006",
+              "purpose": "pbx_clearing"
+            }
+          ],
+          "amount": 5000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000006",
+            "debit_account_id": "50050000-0000-4001-a000-000000000008",
+            "leg_number": 1
+          }
+        ],
+        "name": "recon_clearing_pbx_50k_fdic",
+        "description": "Flush $50,000 PBX Clearing to Suspense after FDIC sweep rebalancing."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c2f-3490-7e09-8f02-7db773a95d27",
+    "state": "DRAFT",
+    "revision": 8,
+    "transition_date": 1774294348944,
+    "content_hash": "sha256:c52f045dffbdd27d34baf10655c19c54a899b0ced5f4973ec80818894f9c9f0b",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

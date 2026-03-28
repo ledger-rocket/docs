@@ -1,0 +1,197 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5206,
+    "name": "reconciliation_disbursement",
+    "description": "Atomic reconciliation of a disbursement batch against the bank statement. Debits the Disbursement Payable (22100) rail obligation and credits the per-file Control (10102) account, zeroing both in a single posting. On the allocation ledger, debits Cash Balances - Clearing (11901) and credits Cash Balances - Control (11902), zeroing both. No suspense intermediary \u2014 unlike UC1 where clearing and control flushes are independent events, in UC2 both sides are known simultaneously when the recon engine identifies the match, so the reconciliation is atomic.",
+    "financial_statements_impact": [
+      {
+        "account_type": "LIABILITY",
+        "description": "Disbursement Payable (22100) is debited, zeroing the rail obligation on the house ledger.",
+        "impact": "decrease",
+        "ledger_scope": "house"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Control (10102) is credited, zeroing the per-file bank statement staging balance on the house ledger.",
+        "impact": "decrease_or_no_impact",
+        "ledger_scope": "house"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on the allocation ledger: Cash Balances - Clearing (11901) is debited and Cash Balances - Control (11902) is credited, zeroing both FDIC reconciliation positions.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "allocation_ledger"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Recon engine matches an ACH disbursement batch against a bank statement line. Both the rail payable and control balances are known, so reconciliation is atomic \u2014 no suspense pass-through needed.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "house": "House ledger where the rail payable (22100) and per-file Control (10102) are zeroed out against each other.",
+      "allocation_ledger": "Allocation ledger (ID 5002) where Cash Balances - Clearing and Cash Balances - Control are zeroed out for FDIC tracking."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          },
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Atomic reconciliation: zero the rail payable obligation directly against the bank statement control balance. No suspense intermediary."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Disbursement Payable per payment rail (e.g. ACH, wire, PayPal); debited to zero out the rail obligation.",
+        "mask": "22100",
+        "purpose": "rail_payable"
+      },
+      {
+        "description": "Bank statement control account (Master FBO - Control); credited to zero out the per-file bank statement staging balance.",
+        "mask": "10102",
+        "purpose": "control_account"
+      },
+      {
+        "description": "Cash Balances - Clearing on the allocation ledger; debited to zero the clearing-side FDIC position.",
+        "mask": "11901",
+        "purpose": "cash_balances_clearing"
+      },
+      {
+        "description": "Cash Balances - Control on the allocation ledger; credited to zero the control-side FDIC position.",
+        "mask": "11902",
+        "purpose": "control_alloc"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "ach_file_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "ACH batch file being reconciled."
+        },
+        "statement_file_id": {
+          "maxLength": 100,
+          "description": "Bank statement file being reconciled.",
+          "type": "string",
+          "minLength": 1
+        },
+        "payment_rail": {
+          "type": "string",
+          "description": "Payment rail identifier (e.g. ACH, WIRE, PAYPAL) for audit trail."
+        }
+      },
+      "required": [
+        "ach_file_id",
+        "statement_file_id",
+        "payment_rail"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [
+      {
+        "description": "Static: Cash Balances - Clearing (11901) on allocation ledger.",
+        "name": "cash_balances_clearing",
+        "value": "50050000-0000-4002-a000-000000011901"
+      }
+    ],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.control_account.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.rail_payable.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Match the ACH batch obligation against the bank statement; both positions zero out atomically.",
+        "leg_number": 1,
+        "ledger_scope": "house",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.control_alloc.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.cash_balances_clearing.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the reconciliation on the allocation ledger, zeroing both FDIC positions.",
+        "leg_number": 2,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5206
+          ],
+          "event_id": "01952000-0000-7002-8000-000000000060",
+          "event_source": "api",
+          "extra_metadata": {
+            "ach_file_id": "ach-disb-2026-03-01-001",
+            "statement_file_id": "FBO-STMT-2026-03-02",
+            "payment_rail": "ACH"
+          },
+          "occurred_at": 1772704000000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000220001",
+              "purpose": "rail_payable"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "control_alloc"
+            }
+          ],
+          "amount": 50000
+        },
+        "expected_transfers": [
+          {
+            "amount": 50000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000003",
+            "debit_account_id": "50050000-0000-4001-a000-000000220001",
+            "leg_number": 1
+          },
+          {
+            "amount": 50000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011902",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 2
+          }
+        ],
+        "name": "recon_disbursement_500",
+        "description": "Reconcile $500.00 ACH disbursement: zero out rail payable (22100) against control (10102), and zero Cash Balances - Clearing (11901) against Cash Balances - Control (11902)."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019ce8c3-e25c-7bc1-bf74-6131171bcd7c",
+    "state": "DRAFT",
+    "revision": 6,
+    "transition_date": 1773431677532,
+    "content_hash": "sha256:d3c11a55aabe755a67c215816af870b04729cb6d0525552d210a1b0b77bddefe",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

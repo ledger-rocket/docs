@@ -1,0 +1,133 @@
+# Rollup Accounts and Reporting
+
+How LedgerRocket aggregates child account balances for reporting through rollup accounts.
+
+## What Rollup Accounts Do
+
+A rollup account aggregates the balances of all accounts sharing the same account code within a ledger. Instead of summing individual accounts at query time, LedgerRocket maintains rollup accounts that receive automatic summary postings whenever their child accounts are debited or credited.
+
+This provides:
+
+- Instant aggregate balances without scanning every child account
+- Consistent reporting totals that are always in sync with underlying accounts
+- Account-code-level visibility for financial statements and dashboards
+
+## Configuration
+
+Rollup behavior is controlled by two flags on different objects:
+
+### `has_rollup` on Account Codes
+
+Set on the account code to enable rollup generation for all accounts using that code.
+
+```bash
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/account-codes \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: lr-test-20250701" \
+  -d '{
+    "code": "20100",
+    "name": "Customer Available",
+    "account_type": "LIABILITY",
+    "description": "Spendable customer balance",
+    "has_rollup": true
+  }' | jq .
+```
+
+When `has_rollup: true`, the system creates a corresponding rollup account for each ledger that contains accounts with this code.
+
+### `is_rollup` on Accounts
+
+Marks a specific account as the rollup aggregation target. This account receives automatic postings that mirror the net activity across all non-rollup accounts with the same code.
+
+```bash
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: lr-test-20250701" \
+  -d '{
+    "ledger_id": 5001,
+    "account_code": "20100",
+    "entity_id": "PLATFORM_ENTITY_UUID",
+    "name": "Customer Available (Rollup)",
+    "is_rollup": true,
+    "is_presentable": false,
+    "is_internal_gl_only": true
+  }' | jq .
+```
+
+Rollup accounts are typically `is_internal_gl_only: true` because they exist for reporting, not for customer-facing views.
+
+## Posting Rules
+
+Business events cannot post directly to rollup accounts. If a template leg references a rollup account, the Event Service rejects the event with an error. This prevents double-counting -- rollup balances are derived, not directly modified.
+
+### manual_rollup_override Directive
+
+In rare cases (corrections, adjustments), you may need to post directly to a rollup account. The event must carry the `manual_rollup_override` directive:
+
+```bash
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/events \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: lr-test-20250701" \
+  -d '{
+    "event_id": "019a0001-0000-7000-8000-000000000099",
+    "site_id": 5,
+    "template_ids": [533],
+    "amount": 1500,
+    "occurred_at": 1705315800000,
+    "event_source": "ops-portal",
+    "directives": ["manual_rollup_override"],
+    "accounts": [
+      {"account_id": "ROLLUP_ACCOUNT_UUID", "purpose": "target_account"},
+      {"account_id": "ADJUSTMENT_ACCOUNT_UUID", "purpose": "source_account"}
+    ],
+    "extra_metadata": {
+      "reason": "Year-end rollup correction",
+      "approved_by": "finance-team"
+    }
+  }'
+```
+
+Use this sparingly. Every direct rollup posting should have an audit trail (the `extra_metadata` should document the reason and approver).
+
+## Querying Rollup Balances
+
+### Single Rollup Account Balance
+
+```bash
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/accounts/ROLLUP_ACCOUNT_UUID/balance?site_id=5" \
+  -H "x-api-key: lr-test-20250701" | jq .
+```
+
+### Balance by Account Code
+
+Query the aggregate balance across all accounts with a given code, spanning multiple ledgers. This is the primary way to get reporting totals:
+
+```bash
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/account-codes/20100/balance?site_id=5" \
+  -H "x-api-key: lr-test-20250701" | jq .
+```
+
+### Balance History by Account Code
+
+Get a timeseries of aggregate balances for an account code:
+
+```bash
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/account-codes/20100/balance-history?site_id=5" \
+  -H "x-api-key: lr-test-20250701" | jq .
+```
+
+## Reporting Patterns
+
+### Reconciliation Check
+
+Temporary accounts (clearing, control, suspense) should net to zero at end of day. A non-zero balance indicates incomplete workflows:
+
+```bash
+for code in 10101 10102 10103 10104; do
+  echo -n "Code $code: "
+  curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/account-codes/$code/balance?site_id=5" \
+    -H "x-api-key: lr-test-20250701" | jq -r '"credits=" + .credits_posted + " debits=" + .debits_posted'
+done
+```
+
+If any code shows a non-zero net balance, investigate using [Event Chain Analysis](05-event-chain-analysis.md).

@@ -1,0 +1,181 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5613,
+    "name": "sweep_aggregate_rail_to_rail",
+    "description": "Intra-FBO inter-rail sweep: aggregate clearing between two FBO rail instances on the economic ledger (DR dest 10101, CR source 10101) and queue intentions on the intention ledger (DR dest 8100, CR source 8100). One event per sweep batch per rail pair.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification between two FBO rail clearing instances. Net zero on economic ledger.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "economic_ledger"
+      },
+      {
+        "account_type": "SUPPLEMENTAL",
+        "description": "Supplemental-to-supplemental reclassification between two FBO rail intention instances. Net zero on intention ledger.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "intention_ledger"
+      }
+    ],
+    "category": "SWEEP",
+    "product": "FDIC_SWEEP",
+    "event_type": "TRANSFER",
+    "trigger": "Sweep engine identifies intra-FBO inter-rail imbalance requiring rebalancing.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "economic_ledger": "Economic ledger (ID 5001) where aggregate clearing positions are created between two FBO rail instances.",
+      "intention_ledger": "Intention ledger (ID 5003) where sweep intentions are queued between two FBO rail instances."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Create expected clearing positions for intra-rail sweep at aggregate level."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Queue sweep intention between FBO rail instances."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Destination rail FBO Clearing Total; debited to create expected inbound.",
+        "mask": "10101",
+        "purpose": "dest_clearing_total"
+      },
+      {
+        "description": "Source rail FBO Clearing Total; credited to create expected outbound.",
+        "mask": "10101",
+        "purpose": "source_clearing_total"
+      },
+      {
+        "description": "Destination rail FBO Intention; debited to queue sweep destination.",
+        "mask": "8100",
+        "purpose": "dest_intention"
+      },
+      {
+        "description": "Source rail FBO Intention; credited to queue sweep source.",
+        "mask": "8100",
+        "purpose": "source_intention"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "sweep_batch_id": {
+          "description": "Unique identifier for the intra-rail sweep batch.",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "sweep_batch_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.source_clearing_total.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.dest_clearing_total.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Stage expected inter-rail cash movement: dest rail expects inbound, source rail expects outbound.",
+        "leg_number": 1,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.source_intention.account_id",
+        "credit_account_type": "SUPPLEMENTAL",
+        "debit_account": "accounts.dest_intention.account_id",
+        "debit_account_type": "SUPPLEMENTAL",
+        "description": "Record sweep intent between rails for treasury execution tracking.",
+        "leg_number": 2,
+        "ledger_scope": "intention_ledger",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5613
+          ],
+          "event_id": "01960000-0000-7613-8000-000000000001",
+          "event_source": "sweep-engine",
+          "extra_metadata": {
+            "sweep_batch_id": "intra-rail-batch-001"
+          },
+          "occurred_at": 1773136000000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000101001",
+              "purpose": "dest_clearing_total"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000001101002",
+              "purpose": "source_clearing_total"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-0000000ca001",
+              "purpose": "dest_intention"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-000000fca011",
+              "purpose": "source_intention"
+            }
+          ],
+          "amount": 2500000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4001-a000-000001101002",
+            "debit_account_id": "50050000-0000-4001-a000-000000101001",
+            "leg_number": 1
+          },
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050001-0000-4003-a000-000000fca011",
+            "debit_account_id": "50050001-0000-4003-a000-0000000ca001",
+            "leg_number": 2
+          }
+        ],
+        "name": "intra_rail_aggregate_worldpay_to_stripe_25k",
+        "description": "Aggregate $25,000 intra-rail sweep from Worldpay to Stripe. Customer A needs Stripe funds to cover disbursement deficit."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d034a-953a-738e-94e5-787da32f1fbd",
+    "state": "DRAFT",
+    "revision": 3,
+    "transition_date": 1773876712762,
+    "content_hash": "sha256:2e5b8c93f3cfb0eb3dfabe0e35b8675a6bf677a3c6dfda54d6e7d0959a6b665b",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

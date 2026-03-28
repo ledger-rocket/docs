@@ -1,0 +1,137 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5614,
+    "name": "sweep_payment_initiated_rail",
+    "description": "Intra-FBO inter-rail sweep: reverse intentions on two 8100 instances after payment instructed. DR source intention, CR dest intention on the intention ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "SUPPLEMENTAL",
+        "description": "Supplemental-to-supplemental reversal between two FBO rail intention instances. Net zero on intention ledger.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "intention_ledger"
+      }
+    ],
+    "category": "SWEEP",
+    "product": "FDIC_SWEEP",
+    "event_type": "TRANSFER",
+    "trigger": "Intra-rail sweep payment instructed by treasury service.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "intention_ledger": "Intention ledger (ID 5003) where sweep intentions are reversed after payment is instructed."
+    },
+    "accounting_treatments": [
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Reverse sweep intentions between FBO rail instances after payment instructed."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Source rail FBO Intention; debited to reverse intention.",
+        "mask": "8100",
+        "purpose": "source_intention"
+      },
+      {
+        "description": "Destination rail FBO Intention; credited to reverse intention.",
+        "mask": "8100",
+        "purpose": "dest_intention"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "sweep_batch_id": {
+          "minLength": 1,
+          "type": "string",
+          "description": "Unique identifier for the intra-rail sweep batch.",
+          "maxLength": 100
+        },
+        "payment_ref": {
+          "description": "Payment reference from treasury service.",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "sweep_batch_id",
+        "payment_ref"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.dest_intention.account_id",
+        "credit_account_type": "SUPPLEMENTAL",
+        "debit_account": "accounts.source_intention.account_id",
+        "debit_account_type": "SUPPLEMENTAL",
+        "description": "Reverse sweep intentions after payment instructed.",
+        "leg_number": 1,
+        "ledger_scope": "intention_ledger",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5614
+          ],
+          "event_id": "01960000-0000-7614-8000-000000000001",
+          "event_source": "treasury-service",
+          "extra_metadata": {
+            "sweep_batch_id": "intra-rail-batch-001",
+            "payment_ref": "PAY-INTRA-001"
+          },
+          "occurred_at": 1773136100000,
+          "accounts": [
+            {
+              "account_id": "50050001-0000-4003-a000-000000fca011",
+              "purpose": "source_intention"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-0000000ca001",
+              "purpose": "dest_intention"
+            }
+          ],
+          "amount": 2500000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050001-0000-4003-a000-0000000ca001",
+            "debit_account_id": "50050001-0000-4003-a000-000000fca011",
+            "leg_number": 1
+          }
+        ],
+        "name": "intra_rail_payment_initiated_worldpay_to_stripe_25k",
+        "description": "Reverse $25,000 intra-rail sweep intentions after treasury instructs Worldpay-to-Stripe payment."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d034f-47d1-7214-af8c-9fd94b465453",
+    "state": "DRAFT",
+    "revision": 4,
+    "transition_date": 1773877020625,
+    "content_hash": "sha256:6f6cec7b0e7cb2ae26a2f766dc3b90f965ac1f8f6c16a8c5a8e90731a7dbce15",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

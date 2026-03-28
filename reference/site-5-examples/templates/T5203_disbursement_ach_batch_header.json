@@ -1,0 +1,132 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5203,
+    "name": "disbursement_ach_batch_header",
+    "description": "Record the preparation of a NACHA ACH file on the Economic ledger by debiting a per-file Master FBO - ACH Clearing Files (10104) instance and crediting the permanent Master FBO - Clearing Total (10101), establishing the clearing balance that per-customer ACH submission events (T5204) will draw down to zero.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification within Master FBO clearing: per-file ACH Clearing Files (10104) debit balance increases and Clearing Total (10101) credit balance increases equally. Total economic ledger assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      }
+    ],
+    "category": "DISBURSEMENTS",
+    "product": "DISBURSEMENTS",
+    "event_type": "TRANSFER",
+    "trigger": "A NACHA ACH file is prepared and ready for submission. Fires once per ACH batch file before any per-customer submission events (T5204) for that file.",
+    "ledger_scope_descriptions": {
+      "operational": "Operational ledger (ID 5001) where the batch header establishes the per-file clearing balance under Master FBO - ACH Clearing Files (10104)."
+    },
+    "accounting_treatments": [
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Establish the per-file clearing balance by transferring the file total from a per-file ACH Clearing Files (10104) instance to the permanent Clearing Total; no P&L impact."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Per-file clearing instance (Master FBO - ACH Clearing Files) on the economic ledger; debited with the file total, then drawn down to zero by per-customer ACH submission events (T5204 leg 1).",
+        "mask": "10104",
+        "purpose": "clearing_per_file"
+      },
+      {
+        "description": "Permanent accumulator account (Master FBO - Clearing Total) on the economic ledger; credited once per ACH batch file for the file total.",
+        "mask": "10101",
+        "purpose": "clearing_total"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "ach_file_id": {
+          "type": "string",
+          "description": "NACHA ACH file reference used to create/select the per-file ACH Clearing Files (10104) instance and for batch traceability.",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "expected_entry_count": {
+          "description": "Number of customer entries expected in this ACH batch file, for monitoring and reconciliation.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ach_file_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.clearing_total.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.clearing_per_file.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Seed the per-file ACH Clearing Files (10104) instance with the ACH batch total; per-customer submissions draw this down to zero.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5203
+          ],
+          "event_id": "01952000-0000-7002-8000-000000000010",
+          "event_source": "api",
+          "extra_metadata": {
+            "ach_file_id": "ach-disb-2026-03-01-001",
+            "expected_entry_count": 2
+          },
+          "occurred_at": 1772531200000,
+          "accounts": [
+            {
+              "account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+              "purpose": "clearing_per_file"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000101001",
+              "purpose": "clearing_total"
+            }
+          ],
+          "amount": 50000
+        },
+        "expected_transfers": [
+          {
+            "amount": 50000,
+            "credit_account_id": "50050000-0000-4001-a000-000000101001",
+            "debit_account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+            "leg_number": 1
+          }
+        ],
+        "name": "ach_batch_header_500",
+        "description": "Batch header for a $500.00 ACH disbursement file (ach-disb-2026-03-01-001) with 2 expected customer entries ($200 Customer A + $300 Customer B)."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d216f-754a-7b86-a31c-52cdb9d2ba77",
+    "state": "DRAFT",
+    "revision": 6,
+    "transition_date": 1774382445898,
+    "content_hash": "sha256:576ac7c3b52362b89cba1e48a9b5c70303fddc502d42d3517be92a7337a545b8",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

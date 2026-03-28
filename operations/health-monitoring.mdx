@@ -99,7 +99,7 @@ Use `/livez` for the ALB, not `/readyz`. The readiness probe performs deeper che
 
 ### Event Processing
 
-- **Outbox prepared count** -- events accepted but not yet committed to TigerBeetle. Should stay near zero.
+- **Outbox prepared count** -- events accepted but not yet committed. Should stay near zero.
 - **Outbox failed count** -- events that failed processing. Any non-zero value requires investigation.
 - **Oldest prepared age** -- how long the oldest prepared event has been waiting. Alerts if > 30 seconds.
 - **Oldest committed age** -- how long the oldest committed event has been waiting for publish. Alerts if > 60 seconds.

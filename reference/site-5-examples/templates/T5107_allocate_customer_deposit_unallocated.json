@@ -1,0 +1,258 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5107,
+    "name": "allocate_customer_deposit_unallocated",
+    "description": "The reconciliation service resolves a raw consumer external reference to a real account ID and reclassifies the deposit from the aggregate unallocated liability to the specific consumer's hold account.\n\n**Phase 1 (economic ledger):**\nDebits Unallocated Customer (20900) and credits Consumer Hold (20101). This is a liability-to-liability reclassification -- the total deposit liability is unchanged, only the ownership moves from 'unallocated' to a named consumer.\n\n**Phase 2 (allocation ledger):**\nDebits Unallocated Customer FBO (21900) and credits the consumer's FBO Clearing (21101), assigning the FDIC insurance position to a specific consumer.\n\nFunds go to Hold (not Available) because the reconciliation service may fire before the bank statement confirms the cash has arrived. The human release step (T5402) promotes Hold to Available after bank confirmation.",
+    "financial_statements_impact": [
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability reclassification on the economic ledger: Unallocated Customer (20900) decreases and Consumer Hold (20101) increases by the same amount. Total liabilities unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "economic_ledger"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability reclassification on the allocation ledger: Unallocated Customer FBO (21900) decreases and Consumer FBO Clearing (21101) increases. Total FDIC positions unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "allocation_ledger"
+      }
+    ],
+    "category": "DEPOSITS",
+    "product": "DEPOSITS",
+    "event_type": "DEPOSIT",
+    "trigger": "Reconciliation service resolves a consumer external reference to a real account ID and allocates the deposit.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "economic_ledger": "Economic ledger (ID 5001) where the unallocated customer liability is reclassified to the specific consumer's hold account.",
+      "allocation_ledger": "Allocation ledger (ID 5002) where the unallocated FDIC position is assigned to the specific consumer's FBO clearing account."
+    },
+    "accounting_treatments": [
+      {
+        "type": "customer_deposit_receipt",
+        "policy_refs": [
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Reclassify the deposit liability from the aggregate unallocated account to the specific consumer's hold account; no change to total liabilities."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Assign the FDIC insurance position from the aggregate unallocated FBO account to the specific consumer's FBO clearing account on the allocation ledger."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Per-file unallocated customer instance on the economic ledger; debited to release the deposit from the aggregate unallocated pool.",
+        "mask": "20900",
+        "purpose": "unallocated_customer"
+      },
+      {
+        "description": "Consumer hold liability on the economic ledger; credited to assign the deposit to a specific consumer pending bank confirmation.",
+        "mask": "20101",
+        "purpose": "consumer_hold"
+      },
+      {
+        "description": "Per-file unallocated customer FBO instance on the allocation ledger; debited to release the FDIC position from the aggregate pool.",
+        "mask": "21900",
+        "purpose": "unallocated_customer_fbo"
+      },
+      {
+        "description": "Consumer FBO clearing liability on the allocation ledger; credited to assign the FDIC insurance position to a specific consumer.",
+        "mask": "21101",
+        "purpose": "consumer_fbo_clearing"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "consumer_external_id": {
+          "description": "Consumer entity external identifier, now resolved to a real account_id by the reconciliation service.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "line_reference": {
+          "minLength": 1,
+          "maxLength": 150,
+          "description": "Link back to the T5106 detail line being allocated.",
+          "type": "string"
+        },
+        "allocation_file_id": {
+          "maxLength": 100,
+          "description": "Allocation file reference used to select the per-file Unallocated Customer (20900) and Unallocated Customer FBO (21900) instances.",
+          "type": "string",
+          "minLength": 1
+        },
+        "statement_file_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Bank statement file reference for traceability."
+        }
+      },
+      "required": [
+        "allocation_file_id",
+        "statement_file_id",
+        "consumer_external_id",
+        "line_reference"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_hold.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.unallocated_customer.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Assign ownership of the deposit to a specific consumer; the total deposit liability is unchanged, only the responsible party is now known.",
+        "leg_number": 1,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "customer_deposit_receipt"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_fbo_clearing.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.unallocated_customer_fbo.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Assign the FDIC insurance position to the matched consumer; the clearing balance settles when the human release (T5402) promotes it to the consumer's permanent FBO account.",
+        "leg_number": 2,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5107
+          ],
+          "event_id": "01952000-0000-7107-8000-000000000001",
+          "event_source": "reconciliation_service",
+          "extra_metadata": {
+            "allocation_file_id": "alloc-2026-02-23-001",
+            "statement_file_id": "stmt-2026-02-23-A",
+            "consumer_external_id": "cust-a-001",
+            "line_reference": "row_000001"
+          },
+          "occurred_at": 1771804900000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000020901",
+              "purpose": "unallocated_customer"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca002",
+              "purpose": "consumer_hold"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000021901",
+              "purpose": "unallocated_customer_fbo"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca002",
+              "purpose": "consumer_fbo_clearing"
+            }
+          ],
+          "amount": 800000
+        },
+        "expected_transfers": [
+          {
+            "amount": 800000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000ca002",
+            "debit_account_id": "50050000-0000-4001-a000-000000020901",
+            "leg_number": 1
+          },
+          {
+            "amount": 800000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000ca002",
+            "debit_account_id": "50050000-0000-4002-a000-000000021901",
+            "leg_number": 2
+          }
+        ],
+        "name": "consumer_a_matched_8000",
+        "description": "Reconciliation service matches Customer A (cust-a-001) to account, reclassifying $8,000.00 from unallocated to consumer hold."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5107
+          ],
+          "event_id": "01952000-0000-7107-8000-000000000002",
+          "event_source": "reconciliation_service",
+          "extra_metadata": {
+            "allocation_file_id": "alloc-2026-02-23-001",
+            "statement_file_id": "stmt-2026-02-23-A",
+            "consumer_external_id": "cust-b-001",
+            "line_reference": "row_000002"
+          },
+          "occurred_at": 1771804905000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000020901",
+              "purpose": "unallocated_customer"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000cb002",
+              "purpose": "consumer_hold"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000021901",
+              "purpose": "unallocated_customer_fbo"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000cb002",
+              "purpose": "consumer_fbo_clearing"
+            }
+          ],
+          "amount": 200000
+        },
+        "expected_transfers": [
+          {
+            "amount": 200000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000cb002",
+            "debit_account_id": "50050000-0000-4001-a000-000000020901",
+            "leg_number": 1
+          },
+          {
+            "amount": 200000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000cb002",
+            "debit_account_id": "50050000-0000-4002-a000-000000021901",
+            "leg_number": 2
+          }
+        ],
+        "name": "consumer_b_matched_2000",
+        "description": "Reconciliation service matches Customer B (cust-b-001) to account, reclassifying $2,000.00 from unallocated to consumer hold."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d2ab8-428d-7b78-9860-2dd3936cd51c",
+    "state": "DRAFT",
+    "revision": 3,
+    "transition_date": 1774538211981,
+    "content_hash": "sha256:977c814b868d7483907ad50a403a370ffcc444b60968b9322ac20ac018b5487b",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

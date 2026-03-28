@@ -1,9 +1,9 @@
 ---
 title: "Events"
-description: "An event is a financial business occurrence submitted to the Event Service for processing. The Event Service validates the event, evaluates templates, and produces double-entry transfers in TigerBe..."
+description: "An event is a financial business occurrence submitted to the Event Service for processing. The Event Service validates the event, evaluates templates, and produces double-entry transfers."
 ---
 
-An **event** is a financial business occurrence submitted to the Event Service for processing. The Event Service validates the event, evaluates templates, and produces double-entry transfers in TigerBeetle.
+An **event** is a financial business occurrence submitted to the Event Service for processing. The Event Service validates the event, evaluates templates, and produces double-entry transfers.
 
 ## Event Structure
 
@@ -26,12 +26,12 @@ An **event** is a financial business occurrence submitted to the Event Service f
 1. **Submit**: Client sends the event to `POST /api/v1/events`.
 2. **Validate**: The Event Service resolves accounts via Ledger Service, validates against each template (metadata schema, account code masks, CEL validations).
 3. **Process**: Template variables are evaluated, transfer legs are computed.
-4. **Transfer creation**: All transfers are submitted atomically to TigerBeetle. Either every transfer succeeds or none do.
+4. **Transfer creation**: All transfers are submitted atomically. Either every transfer succeeds or none do.
 5. **Publish**: The processed event envelope is published to the Event Store for audit.
 
 ## Idempotency
 
-The `event_id` is the idempotency key. If processing fails, **retry with the same `event_id`**. Never generate a new `event_id` for a retry. TigerBeetle deduplicates transfers by ID, so resubmitting a previously successful event is safe.
+The `event_id` is the idempotency key. If processing fails, **retry with the same `event_id`**. Never generate a new `event_id` for a retry. The storage layer deduplicates transfers by ID, so resubmitting a previously successful event is safe.
 
 ## Corrections and Reversals
 

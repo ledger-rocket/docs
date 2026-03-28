@@ -1,0 +1,159 @@
+{
+  "template": {
+    "$schema": "",
+    "site_id": 5,
+    "template_id": 5601,
+    "name": "sweep_aggregate_fbo_to_pbx",
+    "description": "UC6 Step 1: Creates expected movements of cash between Master FBO and a destination program bank at aggregate level. Bidirectional: supports sweep from FBO to PBX or PBX to FBO. Credit sweep source clearing and debit sweep destination clearing on the economic ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: sweep destination clearing debited, sweep source clearing credited. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      }
+    ],
+    "category": "SWEEP",
+    "product": "FDIC_SWEEP",
+    "event_type": "TRANSFER",
+    "trigger": "Sweep job identifies required movement between Master FBO and a destination program bank.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "operational": "Operational ledger (ID 5001) where aggregate clearing positions are created for the sweep source and destination."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Create expected clearing positions for inter-bank sweep at aggregate level."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Sweep source clearing asset; credited to reflect expected outbound cash movement.",
+        "mask": "10101|10201",
+        "purpose": "sweep_from_clearing"
+      },
+      {
+        "description": "Sweep destination clearing asset; debited to reflect expected inbound cash movement.",
+        "mask": "10101|10201",
+        "purpose": "sweep_to_clearing"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "enum": [
+            "out",
+            "in"
+          ],
+          "description": "Direction of the sweep movement.",
+          "type": "string"
+        },
+        "customer_count": {
+          "description": "Number of customers included in this sweep batch.",
+          "type": "string"
+        },
+        "run_timestamp": {
+          "description": "ISO 8601 timestamp of when the sweep run was initiated.",
+          "type": "string",
+          "format": "date-time",
+          "example": "2026-03-24T18:53:18Z"
+        },
+        "sweep_batch_id": {
+          "description": "Unique identifier for the sweep batch.",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "sweep_batch_id",
+        "direction",
+        "customer_count",
+        "run_timestamp"
+      ],
+      "type": "object"
+    },
+    "validations": [
+      {
+        "description": "Sweep source and destination clearing accounts must use different account codes.",
+        "expression": "accounts.sweep_from_clearing.account_code.code != accounts.sweep_to_clearing.account_code.code",
+        "name": "distinct_clearing_codes"
+      }
+    ],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.sweep_from_clearing.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.sweep_to_clearing.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Stage expected inter-bank cash movement: destination expects inbound (debit), source expects outbound (credit).",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5601
+          ],
+          "event_id": "01956010-0000-7601-8000-000000000001",
+          "event_source": "sweep-engine",
+          "extra_metadata": {
+            "sweep_batch_id": "sweep-batch-001",
+            "direction": "out",
+            "customer_count": "42",
+            "run_timestamp": "2026-03-24T18:53:18Z"
+          },
+          "occurred_at": 1772531200000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000101001",
+              "purpose": "sweep_from_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000006",
+              "purpose": "sweep_to_clearing"
+            }
+          ],
+          "amount": 5000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050000-0000-4001-a000-000000101001",
+            "debit_account_id": "50050000-0000-4001-a000-000000000006",
+            "leg_number": 1
+          }
+        ],
+        "name": "net_sweep_50k_fbo_to_pbx",
+        "description": "Net $50,000 FDIC sweep from Master FBO to a destination program bank."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d215f-5d60-7d28-ba95-dcf3e5104994",
+    "state": "DRAFT",
+    "revision": 14,
+    "transition_date": 1774381391200,
+    "content_hash": "sha256:e332393c60337cb565cad3caab7ade8ea68d411ea753c049cab7425e3ab37c0a",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

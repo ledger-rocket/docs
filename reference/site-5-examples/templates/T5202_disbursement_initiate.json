@@ -1,0 +1,246 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5202,
+    "name": "disbursement_initiate",
+    "description": "Record a customer disbursement request by debiting the consumer's Available balance (20100) and crediting the consumer's ACH Payable (20102) on the Economic ledger, and debiting the consumer's FBO Main (21100) and crediting the consumer's FBO ACH Payable (21102) on the Allocation ledger. Liability-only \u2014 no assets touched at this stage.",
+    "financial_statements_impact": [
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability-to-liability reclassification on the economic ledger: Consumer Available (20100) decreases and Consumer ACH Payable (20102) increases by the same amount. Total liabilities unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability-to-liability reclassification on the allocation ledger: Consumer FBO Main (21100) decreases and Consumer FBO ACH Payable (21102) increases by the same amount. Total liabilities unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "DISBURSEMENTS",
+    "product": "DISBURSEMENTS",
+    "event_type": "TRANSFER",
+    "trigger": "Customer requests a payout / disbursement. Fires once per customer disbursement request before ACH batch submission.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "operational": "Operational ledger (ID 5001) where the consumer's Available balance is reduced and ACH Payable is created.",
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where the consumer's FBO Main is reduced and FBO ACH Payable is created for FDIC tracking."
+    },
+    "accounting_treatments": [
+      {
+        "type": "customer_withdrawal",
+        "policy_refs": [
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Reclassify the consumer deposit liability from Available to ACH Payable, representing a committed but not yet submitted disbursement."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Record the FDIC fund location reclassification from FBO Main to FBO ACH Payable on the allocation ledger."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Consumer on-balance-sheet deposit liability (real-time spendable funds); debited to reduce the consumer's available balance.",
+        "mask": "20100",
+        "purpose": "consumer_available"
+      },
+      {
+        "description": "Consumer ACH Payable liability; credited to record the pending disbursement obligation.",
+        "mask": "20102",
+        "purpose": "consumer_ach_payable"
+      },
+      {
+        "description": "Consumer FBO Main liability on the allocation ledger; debited to reduce the FDIC fund location.",
+        "mask": "21100",
+        "purpose": "consumer_fbo_main"
+      },
+      {
+        "description": "Consumer FBO ACH Payable liability on the allocation ledger; credited for FDIC tracking of the pending disbursement.",
+        "mask": "21102",
+        "purpose": "consumer_fbo_payable"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "consumer_external_id": {
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Consumer entity external identifier for routing to the correct consumer accounts.",
+          "type": "string"
+        },
+        "payment_rail": {
+          "description": "Intended payment rail (e.g. ACH, WIRE) for routing to the correct payable account.",
+          "type": "string"
+        },
+        "disbursement_id": {
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Unique disbursement request identifier for traceability and idempotency.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "disbursement_id",
+        "consumer_external_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_ach_payable.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.consumer_available.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Reclassify the consumer's deposit liability from available to ACH payable, committing the disbursement.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "customer_withdrawal"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_fbo_payable.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.consumer_fbo_main.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Mirror the commitment on the allocation ledger for FDIC fund-location tracking.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5202
+          ],
+          "event_id": "01952000-0000-7002-8000-000000000020",
+          "event_source": "api",
+          "extra_metadata": {
+            "disbursement_id": "disb-2026-03-01-001",
+            "consumer_external_id": "cust-a-001",
+            "payment_rail": "ACH"
+          },
+          "occurred_at": 1772531200000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca001",
+              "purpose": "consumer_available"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca003",
+              "purpose": "consumer_ach_payable"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca001",
+              "purpose": "consumer_fbo_main"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca010",
+              "purpose": "consumer_fbo_payable"
+            }
+          ],
+          "amount": 20000
+        },
+        "expected_transfers": [
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000ca003",
+            "debit_account_id": "50050000-0000-4001-a000-0000000ca001",
+            "leg_number": 1
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000ca010",
+            "debit_account_id": "50050000-0000-4002-a000-0000000ca001",
+            "leg_number": 2
+          }
+        ],
+        "name": "customer_a_disbursement_200",
+        "description": "Customer A requests a $200.00 ACH disbursement. Dr Available (20100) / Cr ACH Payable (20102) on Economic; Dr FBO Main (21100) / Cr FBO ACH Payable (21102) on Allocation."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5202
+          ],
+          "event_id": "01952000-0000-7002-8000-000000000021",
+          "event_source": "api",
+          "extra_metadata": {
+            "disbursement_id": "disb-2026-03-01-002",
+            "consumer_external_id": "cust-b-001",
+            "payment_rail": "ACH"
+          },
+          "occurred_at": 1772531205000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-0000000cb001",
+              "purpose": "consumer_available"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000cb003",
+              "purpose": "consumer_ach_payable"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000cb001",
+              "purpose": "consumer_fbo_main"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000cb010",
+              "purpose": "consumer_fbo_payable"
+            }
+          ],
+          "amount": 30000
+        },
+        "expected_transfers": [
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000cb003",
+            "debit_account_id": "50050000-0000-4001-a000-0000000cb001",
+            "leg_number": 1
+          },
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000cb010",
+            "debit_account_id": "50050000-0000-4002-a000-0000000cb001",
+            "leg_number": 2
+          }
+        ],
+        "name": "customer_b_disbursement_300",
+        "description": "Customer B requests a $300.00 ACH disbursement. Dr Available (20100) / Cr ACH Payable (20102) on Economic; Dr FBO Main (21100) / Cr FBO ACH Payable (21102) on Allocation."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c20-2f56-7bed-9e19-c0e58189127e",
+    "state": "DRAFT",
+    "revision": 5,
+    "transition_date": 1774293364566,
+    "content_hash": "sha256:e8df5aefb1429ba63482b88da3ef77b32e77abba014c39e2ba41c100cf333703",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

@@ -1,0 +1,267 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5106,
+    "name": "ingest_detail_line_allocation",
+    "description": "Records a single line item from the allocation file, recognizing the deposit liability immediately even though the consumer has not yet been matched to a real account.\n\n**Phase 1 (economic ledger):**\nDraws down the per-file Allocation Clearing (10104) and credits Unallocated Customer (20900). The liability is recognized at ingestion time because the file asserts a deposit obligation, regardless of whether the consumer reference has been resolved.\n\n**Phase 2 (allocation ledger):**\nRecords the expected FDIC position by debiting Cash Balances Clearing (11901) and crediting Unallocated Customer FBO (21900).\n\nThe loader carries raw consumer external references in metadata but does NOT resolve them to account IDs. The reconciliation service (T5107) performs that matching.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Allocation Clearing per-file (10104) credit balance decreases on the economic ledger as each line item draws it down.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "economic_ledger"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Unallocated Customer (20900) credit balance increases on the economic ledger, recognizing the deposit liability at ingestion time.",
+        "impact": "increase",
+        "ledger_scope": "economic_ledger"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Cash Balances Clearing (11901) debit balance increases on the allocation ledger.",
+        "impact": "increase",
+        "ledger_scope": "allocation_ledger"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Unallocated Customer FBO (21900) credit balance increases on the allocation ledger, recording the expected FDIC position.",
+        "impact": "increase",
+        "ledger_scope": "allocation_ledger"
+      }
+    ],
+    "category": "DEPOSITS",
+    "product": "DEPOSITS",
+    "event_type": "DEPOSIT",
+    "trigger": "Per line item in allocation file, after header (T5105) establishes the per-file allocation clearing balance.",
+    "ledger_scope_descriptions": {
+      "allocation_ledger": "Allocation ledger (ID 5002) where the expected FDIC position is recorded for this unallocated deposit.",
+      "economic_ledger": "Economic ledger (ID 5001) where the per-file allocation clearing balance is drawn down and the deposit liability recognized in the unallocated customer account."
+    },
+    "accounting_treatments": [
+      {
+        "type": "customer_deposit_receipt",
+        "policy_refs": [
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Recognize the deposit liability at ingestion time by drawing down per-file allocation clearing and crediting the unallocated customer account."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Record the expected FDIC fund location by debiting Cash Balances Clearing and crediting the unallocated customer FBO account on the allocation ledger."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Per-file allocation clearing instance (Master FBO - Allocation Clearing) on the economic ledger; debited to draw down the clearing balance for this line item.",
+        "mask": "10104",
+        "purpose": "allocation_clearing_per_file"
+      },
+      {
+        "description": "Per-file unallocated customer instance on the economic ledger; credited to recognize the deposit liability pending consumer matching.",
+        "mask": "20900",
+        "purpose": "unallocated_customer"
+      },
+      {
+        "description": "Cash Balances - Clearing asset on the allocation ledger; debited to record the expected FDIC fund location.",
+        "mask": "11901",
+        "purpose": "cash_balances_clearing"
+      },
+      {
+        "description": "Per-file unallocated customer FBO instance on the allocation ledger; credited to record the expected FDIC position for this unallocated deposit.",
+        "mask": "21900",
+        "purpose": "unallocated_customer_fbo"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "allocation_file_id": {
+          "type": "string",
+          "description": "Allocation file reference used to select the per-file Allocation Clearing (10104) and Unallocated Customer (20900) instances.",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "consumer_external_id": {
+          "minLength": 1,
+          "type": "string",
+          "description": "Raw consumer reference from the allocation file. NOT resolved to an account_id -- the reconciliation service (T5107) performs that matching.",
+          "maxLength": 100
+        },
+        "line_reference": {
+          "minLength": 1,
+          "type": "string",
+          "description": "Deterministic per-line identifier within the allocation file for idempotency and deduplication.",
+          "maxLength": 150
+        },
+        "statement_file_id": {
+          "type": "string",
+          "description": "Bank statement file reference for traceability.",
+          "maxLength": 100,
+          "minLength": 1
+        }
+      },
+      "required": [
+        "allocation_file_id",
+        "line_reference",
+        "consumer_external_id",
+        "statement_file_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.unallocated_customer.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.allocation_clearing_per_file.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Recognize the deposit obligation as soon as the file declares it; the liability exists even though we do not yet know which consumer account to assign it to.",
+        "leg_number": 1,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "customer_deposit_receipt"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.unallocated_customer_fbo.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.cash_balances_clearing.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Start tracking the FDIC insurance position at ingestion; the position settles to a specific consumer when T5107 matches the external reference.",
+        "leg_number": 2,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5106
+          ],
+          "event_id": "01952000-0000-7106-8000-000000000001",
+          "event_source": "allocation_file_service",
+          "extra_metadata": {
+            "allocation_file_id": "alloc-2026-02-23-001",
+            "consumer_external_id": "cust-a-001",
+            "line_reference": "row_000001",
+            "statement_file_id": "stmt-2026-02-23-A"
+          },
+          "occurred_at": 1771804800000,
+          "accounts": [
+            {
+              "account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+              "purpose": "allocation_clearing_per_file"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000020901",
+              "purpose": "unallocated_customer"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "cash_balances_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000021901",
+              "purpose": "unallocated_customer_fbo"
+            }
+          ],
+          "amount": 800000
+        },
+        "expected_transfers": [
+          {
+            "amount": 800000,
+            "credit_account_id": "50050000-0000-4001-a000-000000020901",
+            "debit_account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+            "leg_number": 1
+          },
+          {
+            "amount": 800000,
+            "credit_account_id": "50050000-0000-4002-a000-000000021901",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 2
+          }
+        ],
+        "name": "detail_line_customer_a_8000",
+        "description": "Line item for Customer A ($8,000.00) from allocation file alloc-2026-02-23-001. Recognizes deposit liability and FDIC position in unallocated staging."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5106
+          ],
+          "event_id": "01952000-0000-7106-8000-000000000002",
+          "event_source": "allocation_file_service",
+          "extra_metadata": {
+            "allocation_file_id": "alloc-2026-02-23-001",
+            "consumer_external_id": "cust-b-001",
+            "line_reference": "row_000002",
+            "statement_file_id": "stmt-2026-02-23-A"
+          },
+          "occurred_at": 1771804805000,
+          "accounts": [
+            {
+              "account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+              "purpose": "allocation_clearing_per_file"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000020901",
+              "purpose": "unallocated_customer"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011901",
+              "purpose": "cash_balances_clearing"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000021901",
+              "purpose": "unallocated_customer_fbo"
+            }
+          ],
+          "amount": 200000
+        },
+        "expected_transfers": [
+          {
+            "amount": 200000,
+            "credit_account_id": "50050000-0000-4001-a000-000000020901",
+            "debit_account_id": "d3f0b603-1ca2-57e4-bc15-52c0730df8f4",
+            "leg_number": 1
+          },
+          {
+            "amount": 200000,
+            "credit_account_id": "50050000-0000-4002-a000-000000021901",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 2
+          }
+        ],
+        "name": "detail_line_customer_b_2000",
+        "description": "Line item for Customer B ($2,000.00) from allocation file alloc-2026-02-23-001. Recognizes deposit liability and FDIC position in unallocated staging."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d2ab8-3f1a-7bec-bfd4-7b85ea1ebf89",
+    "state": "DRAFT",
+    "revision": 5,
+    "transition_date": 1774538211098,
+    "content_hash": "sha256:aea0d6f1ce4aa89455f557f4c94679d61947142035568288f23cdcf8a5889d95",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

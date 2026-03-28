@@ -1,0 +1,82 @@
+{
+  "workflow": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/v1.1.0/workflow.schema.json",
+    "workflow_id": "019c8f32-1fa1-7c14-b12c-647a31e5caba",
+    "code": "reconciliation-anomaly-resolution",
+    "site_id": 5,
+    "name": "Reconciliation Anomaly Resolution",
+    "description": "# UC4: Reconciliation Anomaly Resolution\n\nManual resolution of reconciliation anomalies discovered after end-of-day reconciliation. Each step is conditional on the anomaly type identified during investigation and requires analyst approval before firing.\n\n## Anomaly Types\n\n**Control orphans** -- per-file Control residuals with no Clearing counterpart:\n\n1. **Resolve Control Orphan** (T5406) -- Flush orphaned Control through Suspense and allocate to a destination account (e.g. Bank Fees) in a single atomic 2-leg event.\n\n**Suspense orphans** -- aged balances remaining after flush, classified by investigation:\n\n2. **Resolve Bank Fee** (T5403) -- DR Bank Fees (50100), CR Suspense (10103). Recognizes the charge as an expense.\n3. **Resolve Erroneous Debit** (T5404) -- DR Clearing (10101), CR Suspense (10103). Re-enters normal clearing/flush cycle when the bank posts a correction.\n4. **Resolve Unrecognized Credit** (T5405) -- DR Suspense (10103), CR Bank Fees (50100). Recognizes the credit as a fee refund or operational offset.\n\n**Final state:** Suspense returns to zero. Anomaly is classified and resolved on the correct account.",
+    "require_shared_ledgers": true,
+    "steps": [
+      {
+        "id": "resolve_control_orphan",
+        "template_id": 5406,
+        "event_sources": [
+          "ops-portal"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Flush an orphaned Control per-file residual (no Clearing counterpart) through Suspense and allocate to destination account (e.g., Bank Fees 50100) in a single atomic 2-leg event. Clears the per-file Control instance and nets Suspense to zero.",
+        "trigger": "analyst_approves_control_orphan_resolution",
+        "condition": "control_per_file_instance_has_residual_balance_after_matching",
+        "condition_description": "Fires when a per-file Control instance has a non-zero balance after all matching is complete, meaning one or more bank statement entries had no Clearing counterpart."
+      },
+      {
+        "id": "resolve_bank_fee",
+        "template_id": 5403,
+        "event_sources": [
+          "ops-portal"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Resolve an aged Suspense orphan identified as a bank service charge (wire fee, maintenance fee, overdraft charge). Debits Bank Fees expense (50100) and credits Suspense (10103), recognizing the fee as an expense per GAAP.",
+        "trigger": "analyst_approves_suspense_resolution",
+        "condition": "suspense_orphan_anomaly_type == BANK_FEE",
+        "condition_description": "Fires when investigation classifies the aged Suspense orphan as a bank service charge."
+      },
+      {
+        "id": "resolve_erroneous_debit",
+        "template_id": 5404,
+        "event_sources": [
+          "ops-portal"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Reclassify an aged Suspense orphan identified as a bank error by moving the amount from Suspense to Clearing (debit Clearing 10101, credit Suspense 10103). Clearing then carries the expected correction, which re-enters the normal ingestion and flush cycle when the bank posts the correcting entry.",
+        "trigger": "analyst_approves_suspense_resolution",
+        "condition": "suspense_orphan_anomaly_type == ERRONEOUS_DEBIT",
+        "condition_description": "Fires when investigation classifies the aged Suspense orphan as a bank erroneous debit pending correction."
+      },
+      {
+        "id": "resolve_unrecognized_credit",
+        "template_id": 5405,
+        "event_sources": [
+          "ops-portal"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "TBD",
+        "depends_on_step_ids": [],
+        "diagram_label": "TBD",
+        "description": "Resolve an orphaned inbound credit in Suspense (bank reported a credit with no matching Clearing entry). Debits Suspense (10103) and credits Bank Fees (50100) to recognize the credit as a fee refund or operational offset.",
+        "trigger": "analyst_approves_suspense_resolution",
+        "condition": "suspense_orphan_anomaly_type == UNRECOGNIZED_CREDIT",
+        "condition_description": "Fires when investigation classifies the aged Suspense orphan as an unrecognized inbound credit (e.g., fee refund, interest payment, bank operational credit)."
+      }
+    ]
+  },
+  "status": "DELETED"
+}

@@ -63,6 +63,6 @@ curl https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1 \
 - **Data isolation**: No API call can read or write data belonging to another site.
 - **System accounts**: Deduplication and rollup accounts are provisioned per-site.
 - **Cache isolation**: The platform cache partitions all cached reference data by `site_id`.
-- **Transfer integrity**: TigerBeetle ledger IDs encode the site, so transfers cannot cross site boundaries even at the storage layer.
+- **Transfer integrity**: Ledger IDs encode the site, so transfers cannot cross site boundaries even at the storage layer.
 
 A site is the first thing you create when onboarding a new client to the platform. All subsequent resources -- entities, ledgers, accounts, and templates -- are created within that site.

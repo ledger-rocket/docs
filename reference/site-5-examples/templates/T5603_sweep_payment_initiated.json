@@ -1,0 +1,186 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5603,
+    "name": "sweep_payment_initiated",
+    "description": "UC6 Step 3: Removes per-customer intention for sweep once payment has been instructed. Debit source intention and credit destination intention on the intention ledger, reversing the intention created in T5602. Fired once per customer in the sweep batch.",
+    "financial_statements_impact": [
+      {
+        "account_type": "SUPPLEMENTAL",
+        "description": "Supplemental-to-supplemental reclassification: reverses the per-customer intention. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "sweep_queue"
+      }
+    ],
+    "category": "SWEEP",
+    "product": "FDIC_SWEEP",
+    "event_type": "TRANSFER",
+    "trigger": "Treasury service instructs sweep payment and confirms instruction accepted. One event per customer in the batch.",
+    "ledger_scope_descriptions": {
+      "sweep_queue": "Sweep queue ledger (ID 5003) where per-customer sweep intentions are removed after payment instruction."
+    },
+    "accounting_treatments": [
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Reverse per-customer sweep intention as payment has been instructed."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Source intention supplemental; debited to remove sweep source intention.",
+        "mask": "8100|8200",
+        "purpose": "source_intention"
+      },
+      {
+        "description": "Destination intention supplemental; credited to remove sweep destination intention.",
+        "mask": "8100|8200",
+        "purpose": "destination_intention"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "sweep_batch_id": {
+          "description": "Unique identifier for the sweep batch.",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "consumer_external_id": {
+          "description": "Consumer entity external identifier.",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "payment_reference": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string",
+          "description": "Payment instruction reference."
+        }
+      },
+      "required": [
+        "sweep_batch_id",
+        "payment_reference",
+        "consumer_external_id"
+      ],
+      "type": "object"
+    },
+    "validations": [
+      {
+        "description": "Source and destination intention accounts must use different account codes.",
+        "expression": "accounts.source_intention.account_code.code != accounts.destination_intention.account_code.code",
+        "name": "distinct_intention_codes"
+      }
+    ],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.destination_intention.account_id",
+        "credit_account_type": "SUPPLEMENTAL",
+        "debit_account": "accounts.source_intention.account_id",
+        "debit_account_type": "SUPPLEMENTAL",
+        "description": "Clear per-customer sweep intention upon treasury confirmation that the payment instruction was accepted.",
+        "leg_number": 1,
+        "ledger_scope": "sweep_queue",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5603
+          ],
+          "event_id": "01956030-0000-7603-8000-000000000001",
+          "event_source": "treasury-service",
+          "extra_metadata": {
+            "consumer_external_id": "laurence-001",
+            "payment_reference": "PAY-SWEEP-001",
+            "sweep_batch_id": "sweep-batch-001"
+          },
+          "occurred_at": 1772617600000,
+          "accounts": [
+            {
+              "account_id": "50050001-0000-4003-a000-0000000ca001",
+              "purpose": "source_intention"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-0000000ca002",
+              "purpose": "destination_intention"
+            }
+          ],
+          "amount": 7000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 7000000,
+            "credit_account_id": "50050001-0000-4003-a000-0000000ca002",
+            "debit_account_id": "50050001-0000-4003-a000-0000000ca001",
+            "leg_number": 1
+          }
+        ],
+        "name": "sweep_payment_laurence_70k",
+        "description": "Remove Laurence's $70,000 FDIC sweep intention after payment instructed. DR FBO Intention (reverses the credit from T5602), CR PBX Intention (reverses the debit from T5602)."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5603
+          ],
+          "event_id": "01956030-0000-7603-8000-000000000002",
+          "event_source": "treasury-service",
+          "extra_metadata": {
+            "consumer_external_id": "stepan-001",
+            "payment_reference": "PAY-SWEEP-001",
+            "sweep_batch_id": "sweep-batch-001"
+          },
+          "occurred_at": 1772617605000,
+          "accounts": [
+            {
+              "account_id": "50050001-0000-4003-a000-0000000cb002",
+              "purpose": "source_intention"
+            },
+            {
+              "account_id": "50050001-0000-4003-a000-0000000cb001",
+              "purpose": "destination_intention"
+            }
+          ],
+          "amount": 2000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2000000,
+            "credit_account_id": "50050001-0000-4003-a000-0000000cb001",
+            "debit_account_id": "50050001-0000-4003-a000-0000000cb002",
+            "leg_number": 1
+          }
+        ],
+        "name": "sweep_payment_stepan_20k",
+        "description": "Remove Stepan's $20,000 FDIC sweep intention after payment instructed. DR PBX Intention (reverses the credit from T5602), CR FBO Intention (reverses the debit from T5602)."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c01-c6be-7aaa-9980-75222b4e51c1",
+    "state": "DRAFT",
+    "revision": 10,
+    "transition_date": 1774291371710,
+    "content_hash": "sha256:bd0347633647e69a3620b1023f9d4cdf0decd1fb469f2831260c9daa1b894f7b",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

@@ -1,0 +1,150 @@
+# Validations
+
+Validations are CEL predicate expressions that must evaluate to `true` for an event to be processed. If any validation fails, the entire event is rejected with the validation's error description. Validations run after variables are evaluated but before legs generate transfers.
+
+## Validation Declaration
+
+Validations are declared in the `validations` array. Each validation has three fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Identifier for this validation rule. Max 100 characters, `lower_snake_case`. |
+| `expression` | string | Yes | CEL expression that must evaluate to `true`. Max 1000 characters. |
+| `description` | string | Yes | Human-readable error message shown when the validation fails. Max 500 characters. |
+
+## How Validation Works
+
+1. All variables are evaluated first (in declaration order).
+2. Each validation expression is evaluated. The expression has access to `event.*`, `accounts.*`, and all declared variables.
+3. If any expression evaluates to `false`, the event is rejected. The `description` field is returned as the error message.
+4. If all validations pass, processing continues to leg generation.
+
+## Common Patterns
+
+### Ensuring Accounts Are Distinct
+
+The most common validation pattern prevents the same account from appearing in conflicting roles. This is critical for templates where the caller controls which accounts are debited vs. credited:
+
+```json
+{
+    "name": "distinct_economic_codes",
+    "expression": "accounts.debit_economic.account_code.code != accounts.credit_economic.account_code.code",
+    "description": "Economic debit and credit accounts must use different account codes."
+}
+```
+
+This validation from **template 5617** (`sweep_recon_bank_payment_rail`) ensures the debit and credit sides of the reconciliation use different account codes -- preventing an event from accidentally debiting and crediting the same account.
+
+### Preventing Self-Referential Resolution
+
+```json
+{
+    "name": "accounts_are_distinct",
+    "expression": "accounts.suspense_account.account_id != accounts.destination_account.account_id",
+    "description": "Suspense and destination accounts must be different -- cannot resolve a suspense entry to itself."
+}
+```
+
+This validation from **template 5405** (`suspense_resolve_inbound_credit`) prevents an operator from accidentally resolving a suspense balance back into the same suspense account.
+
+### Multi-Validation Templates
+
+Templates can define multiple validations. All must pass:
+
+```json
+"validations": [
+    {
+        "name": "distinct_economic_codes",
+        "expression": "accounts.debit_economic.account_code.code != accounts.credit_economic.account_code.code",
+        "description": "Economic debit and credit accounts must use different account codes (one settled, one control)."
+    },
+    {
+        "name": "distinct_allocation_codes",
+        "expression": "accounts.debit_allocation.account_code.code != accounts.credit_allocation.account_code.code",
+        "description": "Allocation debit and credit accounts must use different account codes (one settled, one control)."
+    }
+]
+```
+
+This pair of validations from a reconciliation template ensures that both the economic ledger and allocation ledger legs use distinct account codes.
+
+## Real-World Examples from Production Templates
+
+### Template 5617: Sweep Reconciliation Bank Payment
+
+```json
+{
+    "template_id": 5617,
+    "name": "sweep_recon_bank_payment_rail",
+    "validations": [
+        {
+            "name": "distinct_economic_codes",
+            "expression": "accounts.debit_economic.account_code.code != accounts.credit_economic.account_code.code",
+            "description": "Economic debit and credit accounts must use different account codes."
+        },
+        {
+            "name": "distinct_allocation_codes",
+            "expression": "accounts.debit_allocation.account_code.code != accounts.credit_allocation.account_code.code",
+            "description": "Allocation debit and credit accounts must use different account codes."
+        }
+    ]
+}
+```
+
+### Template 5602: Sweep Customer Allocation
+
+```json
+{
+    "template_id": 5602,
+    "name": "sweep_customer_allocation",
+    "validations": [
+        {
+            "name": "distinct_intention_codes",
+            "expression": "accounts.source_intention.account_code.code != accounts.destination_intention.account_code.code",
+            "description": "Sweep source and destination intention accounts must use different account codes."
+        }
+    ]
+}
+```
+
+## Additional Validation Patterns
+
+**Amount range check:**
+
+```json
+{
+    "name": "positive_amount",
+    "expression": "event.amount > 0",
+    "description": "Event amount must be positive."
+}
+```
+
+**Variable-based validation:**
+
+```json
+{
+    "name": "fee_within_bounds",
+    "expression": "fee_amount > 0 && fee_amount < event.amount",
+    "description": "Computed fee must be positive and less than the total amount."
+}
+```
+
+**Metadata presence check:**
+
+```json
+{
+    "name": "has_approver",
+    "expression": "event.extra_metadata.approver.size() > 0",
+    "description": "Approver identifier is required for manual adjustments."
+}
+```
+
+## Empty Validations
+
+Many templates have no validations at all. This is valid -- it means the template accepts any event that passes structural validation (correct accounts, valid metadata schema, etc.):
+
+```json
+"validations": []
+```
+
+The majority of production templates in site 5 use empty validations, relying instead on `account_code_validations` and `metadata_schema` for input constraints.

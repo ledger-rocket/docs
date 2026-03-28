@@ -1,0 +1,334 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5214,
+    "name": "accountants_reconciliation_clearing",
+    "description": "Accountants' model: Reconciliation event (clearing). Zero out Clearing Total (10101) to Suspense (10103), reverse the customer Hold (20101) and Pending Disbursements (20102), and mirror on the allocation ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on house ledger: Clearing Total (10101) to Suspense (10103).",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "house"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability-to-liability reclassification on economic ledger: Hold (20101) reversed, Pending Disbursements (20102) zeroed.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "economic_ledger"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on allocation ledger: Cash Balances - Clearing (11901) to Cash Balances - Suspense (11903).",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "allocation_ledger"
+      },
+      {
+        "account_type": "LIABILITY",
+        "description": "Liability-to-liability reclassification on allocation ledger: FBO Hold (21101) reversed, FBO Pending Disbursements (21102) zeroed.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "allocation_ledger"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation event (clearing) -- matching engine pairs disbursement against bank statement.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "allocation_ledger": "Allocation ledger (ID 5002) where allocation clearing moves to suspense and customer FBO positions are reversed.",
+      "house": "House ledger where Clearing Total is moved to Suspense.",
+      "economic_ledger": "Economic ledger (ID 5001) where customer Hold and Pending Disbursements are reversed."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          },
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Move clearing balance to suspense and reverse the customer hold positions."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Clearing Total asset; debited to zero clearing balance.",
+        "mask": "10101",
+        "purpose": "clearing_total"
+      },
+      {
+        "description": "Suspense asset; credited to stage for bank payment reconciliation.",
+        "mask": "10103",
+        "purpose": "suspense_account"
+      },
+      {
+        "description": "Consumer Hold liability; debited to reverse the hold.",
+        "mask": "20101",
+        "purpose": "consumer_hold"
+      },
+      {
+        "description": "Consumer Pending Disbursements liability; credited to zero the pending position.",
+        "mask": "20102",
+        "purpose": "consumer_pending"
+      },
+      {
+        "description": "Cash Balances - Clearing asset; debited to zero clearing allocation.",
+        "mask": "11901",
+        "purpose": "cash_bal_clearing"
+      },
+      {
+        "description": "Cash Balances - Suspense asset; credited to stage allocation suspense.",
+        "mask": "11903",
+        "purpose": "cash_bal_suspense"
+      },
+      {
+        "description": "Consumer FBO Hold liability; debited to reverse allocation hold.",
+        "mask": "21101",
+        "purpose": "consumer_fbo_hold"
+      },
+      {
+        "description": "Consumer FBO Pending Disbursements liability; credited to zero allocation pending.",
+        "mask": "21102",
+        "purpose": "consumer_fbo_pending"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "recon_id": {
+          "maxLength": 100,
+          "description": "Reconciliation event identifier.",
+          "type": "string",
+          "minLength": 1
+        },
+        "consumer_external_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Consumer entity external identifier."
+        }
+      },
+      "required": [
+        "recon_id",
+        "consumer_external_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [
+      {
+        "description": "Static: Clearing Total (10101) on economic ledger.",
+        "name": "clearing_total",
+        "value": "50050000-0000-4001-a000-000000101001"
+      },
+      {
+        "description": "Static: Suspense (10103) on house ledger.",
+        "name": "suspense_account",
+        "value": "50050000-0000-4001-a000-000000000004"
+      },
+      {
+        "description": "Static: Cash Balances - Clearing (11901) on allocation ledger.",
+        "name": "cash_bal_clearing",
+        "value": "50050000-0000-4002-a000-000000011901"
+      },
+      {
+        "description": "Static: Cash Balances - Suspense (11903) on allocation ledger.",
+        "name": "cash_bal_suspense",
+        "value": "50050000-0000-4002-a000-000000011903"
+      }
+    ],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.suspense_account.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.clearing_total.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Flush clearing into suspense for bank statement matching.",
+        "leg_number": 1,
+        "ledger_scope": "house",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_pending.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.consumer_hold.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Release consumer hold and zero the pending disbursement position upon reconciliation.",
+        "leg_number": 2,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cash_bal_suspense.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.cash_bal_clearing.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the clearing-to-suspense flush on the allocation ledger.",
+        "leg_number": 3,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.consumer_fbo_pending.account_id",
+        "credit_account_type": "LIABILITY",
+        "debit_account": "accounts.consumer_fbo_hold.account_id",
+        "debit_account_type": "LIABILITY",
+        "description": "Release consumer FBO hold and zero the FDIC pending position upon reconciliation.",
+        "leg_number": 4,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5214
+          ],
+          "event_id": "01952000-0000-7014-8000-000000000001",
+          "event_source": "api",
+          "extra_metadata": {
+            "recon_id": "acct-recon-clr-001",
+            "consumer_external_id": "cust-a-001"
+          },
+          "occurred_at": 1772704000000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca002",
+              "purpose": "consumer_hold"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000ca003",
+              "purpose": "consumer_pending"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca002",
+              "purpose": "consumer_fbo_hold"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000ca010",
+              "purpose": "consumer_fbo_pending"
+            }
+          ],
+          "amount": 20000
+        },
+        "expected_transfers": [
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000004",
+            "debit_account_id": "50050000-0000-4001-a000-000000101001",
+            "leg_number": 1
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000ca003",
+            "debit_account_id": "50050000-0000-4001-a000-0000000ca002",
+            "leg_number": 2
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011903",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 3
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000ca010",
+            "debit_account_id": "50050000-0000-4002-a000-0000000ca002",
+            "leg_number": 4
+          }
+        ],
+        "name": "recon_clearing_customer_a_200",
+        "description": "Reconciliation clearing for Customer A $200 disbursement (accountants' model)."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5214
+          ],
+          "event_id": "01952000-0000-7014-8000-000000000002",
+          "event_source": "api",
+          "extra_metadata": {
+            "recon_id": "acct-recon-clr-002",
+            "consumer_external_id": "cust-b-001"
+          },
+          "occurred_at": 1772704005000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-0000000cb002",
+              "purpose": "consumer_hold"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-0000000cb003",
+              "purpose": "consumer_pending"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000cb002",
+              "purpose": "consumer_fbo_hold"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-0000000cb010",
+              "purpose": "consumer_fbo_pending"
+            }
+          ],
+          "amount": 30000
+        },
+        "expected_transfers": [
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000004",
+            "debit_account_id": "50050000-0000-4001-a000-000000101001",
+            "leg_number": 1
+          },
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4001-a000-0000000cb003",
+            "debit_account_id": "50050000-0000-4001-a000-0000000cb002",
+            "leg_number": 2
+          },
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011903",
+            "debit_account_id": "50050000-0000-4002-a000-000000011901",
+            "leg_number": 3
+          },
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4002-a000-0000000cb010",
+            "debit_account_id": "50050000-0000-4002-a000-0000000cb002",
+            "leg_number": 4
+          }
+        ],
+        "name": "recon_clearing_customer_b_300",
+        "description": "Reconciliation clearing for Customer B $300 disbursement (accountants' model)."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019ce8c3-cec6-7d51-977d-d25780d37a4d",
+    "state": "DRAFT",
+    "revision": 6,
+    "transition_date": 1773431672518,
+    "content_hash": "sha256:db2dcb5aab697d7fbed6e479fa436b7ffb0f76fe9c4a20eef9902c0335882405",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

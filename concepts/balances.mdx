@@ -1,9 +1,9 @@
 ---
 title: "Balances"
-description: "The Balance Service provides real-time and historical balance queries against TigerBeetle, the underlying ledger store."
+description: "The Balance Service provides real-time and historical balance queries against the underlying ledger store."
 ---
 
-The **Balance Service** provides real-time and historical balance queries against TigerBeetle, the underlying ledger store.
+The **Balance Service** provides real-time and historical balance queries against the underlying ledger store.
 
 ## Credits Posted / Debits Posted Model
 
@@ -16,9 +16,9 @@ The **net balance** is `credits_posted - debits_posted`. For asset accounts (nor
 
 Both values are returned as strings to avoid integer overflow in JSON for large balances.
 
-## Real-Time Balances from TigerBeetle
+## Real-Time Balances
 
-Current balances are queried directly from TigerBeetle, which maintains them as transfers are committed. There is no batch reconciliation -- balances reflect all committed transfers immediately.
+Current balances are maintained as transfers are committed. There is no batch reconciliation -- balances reflect all committed transfers immediately.
 
 ```bash
 curl "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/balances/0192b4f0-7abc-7def-8000-000000000001?site_id=1" \
@@ -71,4 +71,4 @@ Account code timeseries are also available, providing aggregated balance history
 
 ## Balance Caching
 
-The Balance Service caches **immutable historical data** -- balance snapshots at past timestamps that can never change because TigerBeetle transfers are append-only. Current (latest) balances are always fetched live from TigerBeetle. This caching strategy provides fast historical queries without risking stale data for current balances.
+The Balance Service caches **immutable historical data** -- balance snapshots at past timestamps that can never change because transfers are append-only. Current (latest) balances are always fetched live from the financial database. This caching strategy provides fast historical queries without risking stale data for current balances.

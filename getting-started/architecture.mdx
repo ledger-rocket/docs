@@ -10,7 +10,6 @@ LedgerRocket is composed of four core services, each with a single responsibilit
 ```text
                          +---------------------+
                          |    Ledger Service    |
-                         |      (Python)        |
                          | reference data:      |
                          | sites, entities,     |
                          | ledgers, accounts,   |
@@ -21,27 +20,27 @@ LedgerRocket is composed of four core services, each with a single responsibilit
                                     | resolve accounts,
                                     | ledgers, entities
                                     |
-Client ---POST /events--->  Event Service (Go)  ---atomic write--->  TigerBeetle
-                              |         |                            (transfers &
-                              |         |                             balances)
-                              |         v                                ^
-                              |   Accounting Rule                        |
-                              |   Engine                                 |
-                              |   (template definitions)                 |
-                              |                                          |
-                              |                              Balance Service (Go)
+Client ---POST /events--->  Event Service  ---atomic write--->  Financial Database
+                              |         |                        (transfers &
+                              |         |                         balances)
+                              |         v                            ^
+                              |   Accounting Rule                    |
+                              |   Engine                             |
+                              |   (template definitions)             |
+                              |                                      |
+                              |                              Balance Service
                               |                              (balance queries
-                              +--- event store (S3) --->      + cache)
+                              +--- event store ---------->    + cache)
 ```
 
 ### Service Responsibilities
 
-| Service | Language | Port | Responsibility |
-|---------|----------|------|----------------|
-| **Ledger Service** | Python | 8000 | Reference data authority. Manages sites, entities, ledgers, accounts, account codes, currencies, and countries. Source of truth for all organizational and chart-of-accounts data. |
-| **Event Service** | Go | 8080 | Event processing engine. Accepts financial events, resolves accounts via the Ledger Service, evaluates templates, produces double-entry transfers, and commits them atomically to TigerBeetle. Also serves transfer queries. |
-| **Balance Service** | Go | 8081 | Balance queries. Provides real-time and historical balance lookups against TigerBeetle. Caches immutable historical data for performance. |
-| **Accounting Rule Engine** | -- | -- | Template management. Handles the lifecycle of accounting templates (DRAFT, PENDING_APPROVAL, LIVE, DEPRECATED) used by the Event Service. |
+| Service | Responsibility |
+|---------|----------------|
+| **Ledger Service** | Reference data authority. Manages sites, entities, ledgers, accounts, account codes, currencies, and countries. Source of truth for all organizational and chart-of-accounts data. |
+| **Event Service** | Event processing engine. Accepts financial events, resolves accounts via the Ledger Service, evaluates templates, produces double-entry transfers, and commits them atomically. Also serves transfer queries. |
+| **Balance Service** | Balance queries. Provides real-time and historical balance lookups. Caches immutable historical data for performance. |
+| **Accounting Rule Engine** | Template management. Handles the lifecycle of accounting templates (DRAFT, PENDING_APPROVAL, LIVE, DEPRECATED) used by the Event Service. |
 
 ## Data Flow
 
@@ -67,7 +66,7 @@ When a client submits a financial event, the following sequence occurs:
    |
 6. Event is prepared in the outbox (durable, crash-safe)
    |
-7. Transfers are written atomically to TigerBeetle
+7. Transfers are written atomically to the financial database
    |  - All-or-nothing: either every transfer commits or none do
    |  - Idempotent: duplicate event_ids are safely rejected
    |
@@ -86,7 +85,7 @@ When a client submits a financial event, the following sequence occurs:
 2. Balance Service checks the immutable cache
    |  - Historical balances are immutable and cached permanently
    |
-3. If not cached, Balance Service queries TigerBeetle directly
+3. If not cached, Balance Service queries the financial database directly
    |
 4. Response includes debits_posted, credits_posted, and timestamp
 ```
@@ -101,67 +100,15 @@ Recovery path:    PREPARED ---> (outbox poller detects) ---> COMMITTED ---> PUBL
 Duplicate:        event_id already exists ---> return existing result
 ```
 
-## Technology Stack
+## Storage Guarantees
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| **Event Service** | Go | High-throughput event processing with CEL template evaluation |
-| **Balance Service** | Go | Low-latency balance queries with caching |
-| **Ledger Service** | Python | Reference data CRUD with rich validation |
-| **Transfer Storage** | TigerBeetle | Purpose-built financial database for atomic transfers and balance tracking |
-| **Reference Data Storage** | PostgreSQL | Relational storage for entities, ledgers, accounts, and account codes |
-| **Template Storage** | S3 | Versioned template documents with content hashing |
-| **Event Store** | S3 | Durable storage for processed event envelopes |
-| **Balance Cache** | In-memory | Caches immutable historical balances for sub-millisecond reads |
-
-### Why TigerBeetle?
-
-TigerBeetle is a purpose-built database for financial transactions. It provides:
+The financial database backing LedgerRocket provides:
 
 - **Strict serializability** -- transfers are ordered and isolated without application-level locking
 - **Atomic batches** -- all transfers in an event commit or none do, with no partial writes
 - **Deterministic execution** -- same inputs always produce the same outputs
 - **Built-in deduplication** -- duplicate transfer IDs are rejected at the storage layer
-- **High throughput** -- designed for millions of transfers per second on commodity hardware
-
-## Hexagonal Architecture
-
-All services follow the hexagonal architecture pattern (also called ports and adapters). This pattern separates business logic from infrastructure concerns.
-
-```text
-+------------------------------------------------------------------+
-|                        HTTP / gRPC Layer                          |
-|                     (handlers, middleware)                        |
-+---------------------------+--------------------------------------+
-                            |
-                            v
-+---------------------------+--------------------------------------+
-|                        Service Layer                             |
-|                   (business logic, rules)                        |
-|                                                                  |
-|  - No framework imports                                          |
-|  - No database drivers                                           |
-|  - Pure domain logic + interfaces (ports)                        |
-+------+---------------------+---------------------+--------------+
-       |                     |                     |
-       v                     v                     v
-+------+------+   +----------+--------+   +--------+---------+
-| Ledger      |   | TigerBeetle       |   | Template Store   |
-| Service     |   | Adapter           |   | Adapter          |
-| Adapter     |   | (transfers)       |   | (S3)             |
-| (HTTP)      |   |                   |   |                  |
-+-------------+   +-------------------+   +------------------+
-```
-
-### Why This Pattern?
-
-1. **Testability.** The domain layer depends only on interfaces. Tests can substitute any adapter with a mock or fake without touching the business logic.
-
-2. **Portability.** Swapping a backing store (e.g., replacing S3 with a local filesystem for development) requires only a new adapter. The service layer does not change.
-
-3. **Separation of concerns.** HTTP serialization, database queries, and cache logic live in adapters. The service layer contains only business rules.
-
-4. **Dependency direction.** Adapters depend on the domain. The domain never depends on adapters. This prevents infrastructure details from leaking into business logic.
+- **High throughput** -- designed for millions of transfers per second
 
 ## API Conventions
 

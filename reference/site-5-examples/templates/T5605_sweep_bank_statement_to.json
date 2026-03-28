@@ -1,0 +1,179 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5605,
+    "name": "sweep_bank_statement_to",
+    "description": "UC6 Step 5: Bank statement received for Program Bank X showing inbound sweep payment. Debit Program Bank X (10200) and credit Program Bank X Control (10202) on the economic ledger. Debit Cash Balances Program Bank X (11900) and credit Cash Balances Program Bank X Control (11902) on the allocation ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: PBX Settled debited, PBX Control credited. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: CB PBX debited, CB PBX Control credited. Net zero.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "SWEEP",
+    "product": "FDIC_SWEEP",
+    "event_type": "TRANSFER",
+    "trigger": "Bank statement received for Program Bank X showing sweep credit.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "operational": "Operational ledger (ID 5001) where control balance and cash update are recorded for PBX.",
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where control balance and cash update are recorded for PBX tracking."
+    },
+    "accounting_treatments": [
+      {
+        "type": "cash_movement",
+        "policy_refs": [
+          {
+            "id": "ASC_230",
+            "version": 1
+          }
+        ],
+        "description": "Record bank statement entry increasing Program Bank X cash and creating control position."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Program Bank X Settled asset; debited to increase confirmed cash.",
+        "mask": "10200",
+        "purpose": "pbx_settled"
+      },
+      {
+        "description": "Program Bank X Control asset; credited for bank statement ingestion.",
+        "mask": "10202",
+        "purpose": "pbx_control"
+      },
+      {
+        "description": "Cash Balances Program Bank X asset; debited to increase allocation cash.",
+        "mask": "11900",
+        "purpose": "cb_pbx_settled"
+      },
+      {
+        "description": "Cash Balances Program Bank X Control asset; credited for allocation tracking.",
+        "mask": "11902",
+        "purpose": "cb_pbx_control"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "statement_line_ref": {
+          "maxLength": 100,
+          "description": "Statement line reference.",
+          "type": "string",
+          "minLength": 1
+        },
+        "statement_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Bank statement identifier."
+        }
+      },
+      "required": [
+        "statement_id",
+        "statement_line_ref"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.pbx_control.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.pbx_settled.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Ingest inbound sweep on PBX bank statement; settled increases to reflect cash arrival.",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "cash_movement"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cb_pbx_control.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.cb_pbx_settled.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the PBX bank statement on the allocation ledger.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "cash_movement"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5605
+          ],
+          "event_id": "01956050-0000-7605-8000-000000000001",
+          "event_source": "bank-statement-feed",
+          "extra_metadata": {
+            "statement_id": "PBX-STMT-2026-03-01",
+            "statement_line_ref": "SWEEP-IN-001"
+          },
+          "occurred_at": 1772704000000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000005",
+              "purpose": "pbx_settled"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000007",
+              "purpose": "pbx_control"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000000006",
+              "purpose": "cb_pbx_settled"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-00000000000b",
+              "purpose": "cb_pbx_control"
+            }
+          ],
+          "amount": 5000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000007",
+            "debit_account_id": "50050000-0000-4001-a000-000000000005",
+            "leg_number": 1
+          },
+          {
+            "amount": 5000000,
+            "credit_account_id": "50050000-0000-4002-a000-00000000000b",
+            "debit_account_id": "50050000-0000-4002-a000-000000000006",
+            "leg_number": 2
+          }
+        ],
+        "name": "pbx_stmt_fdic_sweep_in_50k",
+        "description": "Program Bank X bank statement showing net $50,000 FDIC sweep payment in. Aggregate of FDIC limit rebalancing across customers."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d1c2d-e20a-71f2-b138-52fdd36be964",
+    "state": "DRAFT",
+    "revision": 8,
+    "transition_date": 1774294262282,
+    "content_hash": "sha256:b055ee6590fc4bb72244edb0017eb5ad8d2e3810401a3b4d013323ab1ce65ed1",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

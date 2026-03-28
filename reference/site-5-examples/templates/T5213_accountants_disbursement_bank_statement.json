@@ -1,0 +1,235 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5213,
+    "name": "accountants_disbursement_bank_statement",
+    "description": "Accountants' model: Record bank statement received for a disbursement. Debit Control (10102) and credit Settled (10100) on the house ledger. Debit Cash Balances - Control (11902) and credit Cash Balances (11900) on the allocation ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on house ledger: Control (10102) debit balance increases and Settled (10100) credit balance increases.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "house"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on allocation ledger: Cash Balances - Control (11902) debit balance increases and Cash Balances (11900) credit balance increases.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "allocation_ledger"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "DISBURSEMENTS",
+    "event_type": "TRANSFER",
+    "trigger": "Bank statement line confirms cash has left the FBO account for a disbursement.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "allocation_ledger": "Allocation ledger (ID 5002) where Cash Balances and Cash Balances - Control are updated for FDIC tracking.",
+      "house": "House ledger where Settled and Control positions are updated for the outbound disbursement."
+    },
+    "accounting_treatments": [
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_305",
+            "version": 1
+          }
+        ],
+        "description": "Reclassify confirmed outbound cash from Settled to Control for reconciliation staging."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Record FDIC fund location change for the outbound disbursement on the allocation ledger."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Control reconciliation staging account; debited for outbound disbursement.",
+        "mask": "10102",
+        "purpose": "control_account"
+      },
+      {
+        "description": "Settled bank cash account; credited to reflect cash leaving the bank.",
+        "mask": "10100",
+        "purpose": "settled_account"
+      },
+      {
+        "description": "Cash Balances - Control on allocation ledger; debited to stage for reconciliation.",
+        "mask": "11902",
+        "purpose": "control_alloc"
+      },
+      {
+        "description": "Cash Balances on allocation ledger; credited to reflect FDIC fund decrease.",
+        "mask": "11900",
+        "purpose": "cash_balances_alloc"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "statement_file_id": {
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Bank statement file identifier.",
+          "type": "string"
+        },
+        "transaction_ref": {
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Bank transaction reference.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "statement_file_id",
+        "transaction_ref"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [
+      {
+        "description": "Static: Master FBO Settled (10100).",
+        "name": "settled_account",
+        "value": "50050000-0000-4001-a000-000000010101"
+      },
+      {
+        "description": "Static: Cash Balances - Master FBO (11900) on allocation ledger.",
+        "name": "cash_balances_alloc",
+        "value": "50050000-0000-4002-a000-000000011900"
+      }
+    ],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.settled_account.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.control_account.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Record outbound cash confirmed by bank statement; settled decreases to reflect money leaving the FBO account.",
+        "leg_number": 1,
+        "ledger_scope": "house",
+        "treatment_type": "internal_transfer"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cash_balances_alloc.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.control_alloc.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the bank statement confirmation on the allocation ledger for FDIC tracking.",
+        "leg_number": 2,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5213
+          ],
+          "event_id": "01952000-0000-7013-8000-000000000001",
+          "event_source": "api",
+          "extra_metadata": {
+            "statement_file_id": "FBO-STMT-ACCT-001",
+            "transaction_ref": "ACH-OUT-001"
+          },
+          "occurred_at": 1772617600000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "control_alloc"
+            }
+          ],
+          "amount": 20000
+        },
+        "expected_transfers": [
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4001-a000-000000010101",
+            "debit_account_id": "50050000-0000-4001-a000-000000000003",
+            "leg_number": 1
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011900",
+            "debit_account_id": "50050000-0000-4002-a000-000000011902",
+            "leg_number": 2
+          }
+        ],
+        "name": "bank_statement_200",
+        "description": "Bank statement confirms $200 disbursement has left the FBO account (accountants' model)."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5213
+          ],
+          "event_id": "01952000-0000-7013-8000-000000000002",
+          "event_source": "api",
+          "extra_metadata": {
+            "statement_file_id": "FBO-STMT-ACCT-001",
+            "transaction_ref": "ACH-OUT-002"
+          },
+          "occurred_at": 1772617605000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "control_alloc"
+            }
+          ],
+          "amount": 30000
+        },
+        "expected_transfers": [
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4001-a000-000000010101",
+            "debit_account_id": "50050000-0000-4001-a000-000000000003",
+            "leg_number": 1
+          },
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011900",
+            "debit_account_id": "50050000-0000-4002-a000-000000011902",
+            "leg_number": 2
+          }
+        ],
+        "name": "bank_statement_300",
+        "description": "Bank statement confirms $300 disbursement has left the FBO account (accountants' model)."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019ce8c3-ef10-7416-a68b-7c7b697e50e5",
+    "state": "DRAFT",
+    "revision": 5,
+    "transition_date": 1773431680784,
+    "content_hash": "sha256:4af5bd53c733ed0c33a2230c0629c76188e4d3b8302c7e5ee6fcb23edaa587cd",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

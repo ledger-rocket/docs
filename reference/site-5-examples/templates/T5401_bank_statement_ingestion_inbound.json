@@ -1,0 +1,317 @@
+{
+  "template": {
+    "$schema": "",
+    "site_id": 5,
+    "template_id": 5401,
+    "name": "bank_statement_ingestion_inbound",
+    "description": "Record an inbound bank statement line by debiting Settled (10100) and crediting the per-file Control (10102) on the economic ledger, with a mirror leg debiting Cash Balances FBO (11900) and crediting Cash Balances Control (11902) on the allocation ledger. Fires once per bank statement line item.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on the economic ledger: Settled (10100) debit balance increases and Control (10102) credit balance increases equally. Total economic ledger assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "operational"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on the allocation ledger: Cash Balances FBO (11900) debit balance increases and Cash Balances Control (11902) credit balance increases equally. Total allocation ledger assets unchanged.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "fdic_tracking"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "DEPOSITS",
+    "event_type": "TRANSFER",
+    "trigger": "Bank statement line item is received for the Master FBO account. Fires once per inbound line item.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "fdic_tracking": "FDIC tracking ledger (ID 5002) where Cash Balances FBO and Cash Balances Control positions are updated for FDIC tracking.",
+      "operational": "Operational ledger (ID 5001) where Settled represents confirmed bank cash and Control stages the amount for reconciliation."
+    },
+    "accounting_treatments": [
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_305",
+            "version": 1
+          }
+        ],
+        "description": "Reclassify confirmed inbound cash from Settled to Control for reconciliation staging; no P&L impact and no customer balance impact."
+      },
+      {
+        "type": "internal_transfer",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Record the FDIC fund location for the bank statement deposit by debiting Cash Balances FBO and crediting Cash Balances Control on the allocation ledger."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "House settled bank cash account (confirmed physical cash at Purple Splash FBO bank account).",
+        "mask": "10100",
+        "purpose": "settled_account"
+      },
+      {
+        "description": "House control (reconciliation staging) bank cash account; per-file instance selected by statement_file_id external_id.",
+        "mask": "10102",
+        "purpose": "control_account"
+      },
+      {
+        "description": "Cash Balances FBO asset on the allocation ledger; debited to record FDIC fund location for the bank statement deposit.",
+        "mask": "11900",
+        "purpose": "cash_balances_fbo"
+      },
+      {
+        "description": "Cash Balances Control on the allocation ledger; credited to stage the amount for reconciliation on the FDIC tracking ledger.",
+        "mask": "11902",
+        "purpose": "cash_balances_control"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "marketplace": {
+          "type": "string",
+          "description": "White-labelled product line identifier for this bank statement line (e.g. CraftNest, QuickBite, SkillForge, SeatVault, StayLocal). Optional \u2014 used for analytics and audit traceability.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "payment_rail": {
+          "type": "string",
+          "description": "Inbound payment rail that originated the bank statement line (e.g. ACH, WIRE, PUSH_TO_DEBIT, PAYPAL). Optional \u2014 used for analytics and reconciliation traceability.",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "line_item_description": {
+          "description": "Optional human-readable description from the bank statement line.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "statement_file_id": {
+          "description": "External_id of the source bank statement file; used to select the per-file Control account instance.",
+          "type": "string"
+        },
+        "transaction_ref": {
+          "description": "Bank-provided transaction reference identifier for this statement line item.",
+          "type": "string"
+        },
+        "line_count": {
+          "type": "integer",
+          "description": "Number of line items in the bank statement file."
+        },
+        "total_amount": {
+          "type": "string",
+          "description": "Total amount of all line items in the bank statement file, as a decimal string (e.g. \"333.50\")."
+        }
+      },
+      "required": [
+        "statement_file_id",
+        "transaction_ref"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.control_account.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.settled_account.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Record inbound bank cash: debit Settled (confirmed cash), credit Control (reconciliation staging).",
+        "leg_number": 1,
+        "ledger_scope": "operational",
+        "treatment_type": "internal_transfer"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.cash_balances_control.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.cash_balances_fbo.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Record FDIC fund location: debit Cash Balances FBO, credit Cash Balances Control for reconciliation staging.",
+        "leg_number": 2,
+        "ledger_scope": "fdic_tracking",
+        "treatment_type": "internal_transfer"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5401
+          ],
+          "event_id": "018de6b1-7e55-7b7a-9f7b-9b2f0c4b0003",
+          "event_source": "api",
+          "extra_metadata": {
+            "statement_file_id": "FBO-STMT-2026-02-23",
+            "transaction_ref": "ACH-RTN-003",
+            "line_item_description": "ACH RETURN - INSUFFICIENT FUNDS"
+          },
+          "occurred_at": 1771804802000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000010101",
+              "purpose": "settled_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011900",
+              "purpose": "cash_balances_fbo"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "cash_balances_control"
+            }
+          ],
+          "amount": 20000
+        },
+        "expected_transfers": [
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000003",
+            "debit_account_id": "50050000-0000-4001-a000-000000010101",
+            "leg_number": 1
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011902",
+            "debit_account_id": "50050000-0000-4002-a000-000000011900",
+            "leg_number": 2
+          }
+        ],
+        "name": "inbound_return_200",
+        "description": "Inbound return statement line item ($200). Dr Settled / Cr Control on economic, Dr CB FBO / Cr CB Control on allocation."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5401
+          ],
+          "event_id": "018de6b1-7e55-7b7a-9f7b-9b2f0c4b0004",
+          "event_source": "api",
+          "extra_metadata": {
+            "statement_file_id": "FBO-STMT-2026-02-23",
+            "transaction_ref": "DEP-IN-004",
+            "line_item_description": "BULK DEPOSIT - PAYMENT PROCESSOR"
+          },
+          "occurred_at": 1771804803000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000010101",
+              "purpose": "settled_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011900",
+              "purpose": "cash_balances_fbo"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "cash_balances_control"
+            }
+          ],
+          "amount": 33350
+        },
+        "expected_transfers": [
+          {
+            "amount": 33350,
+            "credit_account_id": "50050000-0000-4001-a000-000000000003",
+            "debit_account_id": "50050000-0000-4001-a000-000000010101",
+            "leg_number": 1
+          },
+          {
+            "amount": 33350,
+            "credit_account_id": "50050000-0000-4002-a000-000000011902",
+            "debit_account_id": "50050000-0000-4002-a000-000000011900",
+            "leg_number": 2
+          }
+        ],
+        "name": "inbound_deposit_333_50",
+        "description": "Inbound bulk deposit ($333.50). Dr Settled / Cr Control on economic, Dr CB FBO / Cr CB Control on allocation."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5401
+          ],
+          "event_id": "018de6b1-7e55-7b7a-9f7b-9b2f0c4b0005",
+          "event_source": "api",
+          "extra_metadata": {
+            "statement_file_id": "FBO-STMT-2026-02-23",
+            "transaction_ref": "DEP-IN-005",
+            "line_item_description": "BULK DEPOSIT - PAYMENT PROCESSOR"
+          },
+          "occurred_at": 1771804804000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000010101",
+              "purpose": "settled_account"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011900",
+              "purpose": "cash_balances_fbo"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "cash_balances_control"
+            }
+          ],
+          "amount": 1000000
+        },
+        "expected_transfers": [
+          {
+            "amount": 1000000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000003",
+            "debit_account_id": "50050000-0000-4001-a000-000000010101",
+            "leg_number": 1
+          },
+          {
+            "amount": 1000000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011902",
+            "debit_account_id": "50050000-0000-4002-a000-000000011900",
+            "leg_number": 2
+          }
+        ],
+        "name": "inbound_deposit_10k",
+        "description": "Inbound bulk deposit ($10,000). Dr Settled (10100) / Cr Control (10102) on economic, Dr CB FBO (11900) / Cr CB Control (11902) on allocation."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d2122-fc07-7ed4-97ec-c7ae9b38460a",
+    "state": "DRAFT",
+    "revision": 23,
+    "transition_date": 1774377434119,
+    "content_hash": "sha256:3968269810efd078355358a4b597fb26dabe96f3377593cd36dee11a7c699ce2",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

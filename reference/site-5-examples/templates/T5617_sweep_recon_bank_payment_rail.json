@@ -1,0 +1,229 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5617,
+    "name": "sweep_recon_bank_payment_rail",
+    "description": "Intra-FBO inter-rail sweep reconciliation: flush suspense against control for one rail instance. Operates on both economic ledger (10103/10102) and allocation ledger (11903/11902). Bidirectional: for the source rail, DR suspense CR control. For the dest rail, DR control CR suspense. Caller controls direction by assigning accounts to debit/credit purposes.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: suspense zeroed against control for one rail. Net zero on economic ledger.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "economic_ledger"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification: CB suspense zeroed against CB control for one rail. Net zero on allocation ledger.",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "allocation_ledger"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation service matches intra-rail bank payment for one rail.",
+    "ledger_scope_descriptions": {
+      "allocation_ledger": "Allocation ledger (ID 5002) where CB suspense/control are zeroed for one rail.",
+      "economic_ledger": "Economic ledger (ID 5001) where suspense/control are zeroed for one rail."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          }
+        ],
+        "description": "Match control against suspense to complete intra-rail bank payment reconciliation for one rail."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "FBO Suspense or Control asset; debited side of economic flush.",
+        "mask": "10102|10103",
+        "purpose": "debit_economic"
+      },
+      {
+        "description": "FBO Suspense or Control asset; credited side of economic flush.",
+        "mask": "10102|10103",
+        "purpose": "credit_economic"
+      },
+      {
+        "description": "CB Suspense or Control asset; debited side of allocation flush.",
+        "mask": "11902|11903",
+        "purpose": "debit_allocation"
+      },
+      {
+        "description": "CB Suspense or Control asset; credited side of allocation flush.",
+        "mask": "11902|11903",
+        "purpose": "credit_allocation"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "recon_id": {
+          "minLength": 1,
+          "type": "string",
+          "description": "Reconciliation event identifier.",
+          "maxLength": 100
+        }
+      },
+      "required": [
+        "recon_id"
+      ],
+      "type": "object"
+    },
+    "validations": [
+      {
+        "description": "Economic debit and credit accounts must use different account codes.",
+        "expression": "accounts.debit_economic.account_code.code != accounts.credit_economic.account_code.code",
+        "name": "distinct_economic_codes"
+      },
+      {
+        "description": "Allocation debit and credit accounts must use different account codes.",
+        "expression": "accounts.debit_allocation.account_code.code != accounts.credit_allocation.account_code.code",
+        "name": "distinct_allocation_codes"
+      }
+    ],
+    "variables": [],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.credit_economic.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.debit_economic.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Flush suspense against control (or reverse) for one rail on economic ledger.",
+        "leg_number": 1,
+        "ledger_scope": "economic_ledger",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.credit_allocation.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.debit_allocation.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror: flush CB suspense against CB control (or reverse) for one rail on allocation ledger.",
+        "leg_number": 2,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5617
+          ],
+          "event_id": "01960000-0000-7617-8000-000000000001",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-bp-intra-wp-001"
+          },
+          "occurred_at": 1773308800000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-00000000f024",
+              "purpose": "debit_economic"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-00000000f013",
+              "purpose": "credit_economic"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-00000000f011",
+              "purpose": "debit_allocation"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-00000000f009",
+              "purpose": "credit_allocation"
+            }
+          ],
+          "amount": 2500000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4001-a000-00000000f013",
+            "debit_account_id": "50050000-0000-4001-a000-00000000f024",
+            "leg_number": 1
+          },
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4002-a000-00000000f009",
+            "debit_account_id": "50050000-0000-4002-a000-00000000f011",
+            "leg_number": 2
+          }
+        ],
+        "name": "intra_rail_recon_bank_payment_source_worldpay_25k",
+        "description": "Source rail (Worldpay): DR suspense CR control on economic; DR CB suspense CR CB control on allocation."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5617
+          ],
+          "event_id": "01960000-0000-7617-8000-000000000002",
+          "event_source": "reconciliation-service",
+          "extra_metadata": {
+            "recon_id": "recon-bp-intra-st-001"
+          },
+          "occurred_at": 1773308900000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "debit_economic"
+            },
+            {
+              "account_id": "50050000-0000-4001-a000-000000000004",
+              "purpose": "credit_economic"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "debit_allocation"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011903",
+              "purpose": "credit_allocation"
+            }
+          ],
+          "amount": 2500000
+        },
+        "expected_transfers": [
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000004",
+            "debit_account_id": "50050000-0000-4001-a000-000000000003",
+            "leg_number": 1
+          },
+          {
+            "amount": 2500000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011903",
+            "debit_account_id": "50050000-0000-4002-a000-000000011902",
+            "leg_number": 2
+          }
+        ],
+        "name": "intra_rail_recon_bank_payment_dest_stripe_25k",
+        "description": "Dest rail (Stripe): DR control CR suspense on economic; DR CB control CR CB suspense on allocation."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019d0c50-55d4-76ef-ba5a-a0d8fe136447",
+    "state": "DRAFT",
+    "revision": 5,
+    "transition_date": 1774028084692,
+    "content_hash": "sha256:d116c06e3e61c4a382a50011c7859e34cc437200a0f31c1f335459ecb0b4366a",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

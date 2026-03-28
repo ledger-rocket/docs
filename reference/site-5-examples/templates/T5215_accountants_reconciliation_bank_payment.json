@@ -1,0 +1,229 @@
+{
+  "template": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+    "site_id": 5,
+    "template_id": 5215,
+    "name": "accountants_reconciliation_bank_payment",
+    "description": "Accountants' model: Reconciliation event (bank payment). Zero out Suspense (10103) against Control (10102) on the house ledger, and Cash Balances - Suspense (11903) against Cash Balances - Control (11902) on the allocation ledger.",
+    "financial_statements_impact": [
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on house ledger: Suspense (10103) zeroed against Control (10102).",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "house"
+      },
+      {
+        "account_type": "ASSET",
+        "description": "Asset-to-asset reclassification on allocation ledger: Cash Balances - Suspense (11903) zeroed against Cash Balances - Control (11902).",
+        "impact": "increase_or_no_impact",
+        "ledger_scope": "allocation_ledger"
+      }
+    ],
+    "category": "RECONCILIATION",
+    "product": "SUSPENSE_MANAGEMENT",
+    "event_type": "TRANSFER",
+    "trigger": "Reconciliation event (bank payment) -- zeroing suspense against control to complete the reconciliation.",
+    "capabilities": [
+      "allows_intercompany_transfers"
+    ],
+    "ledger_scope_descriptions": {
+      "house": "House ledger where Suspense and Control are zeroed against each other.",
+      "allocation_ledger": "Allocation ledger (ID 5002) where Cash Balances - Suspense and Cash Balances - Control are zeroed."
+    },
+    "accounting_treatments": [
+      {
+        "type": "settlement_clearing",
+        "policy_refs": [
+          {
+            "id": "ASC_205",
+            "version": 1
+          },
+          {
+            "id": "ASC_942",
+            "version": 1
+          }
+        ],
+        "description": "Zero out suspense against control, completing the reconciliation cycle."
+      }
+    ],
+    "account_code_validations": [
+      {
+        "description": "Suspense asset; debited to zero suspense balance.",
+        "mask": "10103",
+        "purpose": "suspense_account"
+      },
+      {
+        "description": "Control asset; credited to zero control balance.",
+        "mask": "10102",
+        "purpose": "control_account"
+      },
+      {
+        "description": "Cash Balances - Suspense asset; debited to zero allocation suspense.",
+        "mask": "11903",
+        "purpose": "cash_bal_suspense"
+      },
+      {
+        "description": "Cash Balances - Control asset; credited to zero allocation control.",
+        "mask": "11902",
+        "purpose": "control_alloc"
+      }
+    ],
+    "metadata_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "statement_file_id": {
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Bank statement file being reconciled.",
+          "type": "string"
+        },
+        "recon_id": {
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Reconciliation event identifier.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "recon_id",
+        "statement_file_id"
+      ],
+      "type": "object"
+    },
+    "validations": [],
+    "variables": [
+      {
+        "description": "Static: Suspense (10103) on house ledger.",
+        "name": "suspense_account",
+        "value": "50050000-0000-4001-a000-000000000004"
+      },
+      {
+        "description": "Static: Cash Balances - Suspense (11903) on allocation ledger.",
+        "name": "cash_bal_suspense",
+        "value": "50050000-0000-4002-a000-000000011903"
+      }
+    ],
+    "legs": [
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.control_account.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.suspense_account.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Zero suspense against control to complete the bank payment reconciliation cycle.",
+        "leg_number": 1,
+        "ledger_scope": "house",
+        "treatment_type": "settlement_clearing"
+      },
+      {
+        "amount": "event.amount",
+        "credit_account": "accounts.control_alloc.account_id",
+        "credit_account_type": "ASSET",
+        "debit_account": "accounts.cash_bal_suspense.account_id",
+        "debit_account_type": "ASSET",
+        "description": "Mirror the bank payment reconciliation on the allocation ledger.",
+        "leg_number": 2,
+        "ledger_scope": "allocation_ledger",
+        "treatment_type": "settlement_clearing"
+      }
+    ],
+    "examples": [
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5215
+          ],
+          "event_id": "01952000-0000-7015-8000-000000000001",
+          "event_source": "api",
+          "extra_metadata": {
+            "recon_id": "acct-recon-bp-001",
+            "statement_file_id": "FBO-STMT-ACCT-001"
+          },
+          "occurred_at": 1772704005000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "control_alloc"
+            }
+          ],
+          "amount": 20000
+        },
+        "expected_transfers": [
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000003",
+            "debit_account_id": "50050000-0000-4001-a000-000000000004",
+            "leg_number": 1
+          },
+          {
+            "amount": 20000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011902",
+            "debit_account_id": "50050000-0000-4002-a000-000000011903",
+            "leg_number": 2
+          }
+        ],
+        "name": "recon_bank_payment_200",
+        "description": "Reconciliation bank payment for $200 disbursement (accountants' model)."
+      },
+      {
+        "event_request": {
+          "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
+          "site_id": 5,
+          "template_ids": [
+            5215
+          ],
+          "event_id": "01952000-0000-7015-8000-000000000002",
+          "event_source": "api",
+          "extra_metadata": {
+            "recon_id": "acct-recon-bp-002",
+            "statement_file_id": "FBO-STMT-ACCT-001"
+          },
+          "occurred_at": 1772704010000,
+          "accounts": [
+            {
+              "account_id": "50050000-0000-4001-a000-000000000003",
+              "purpose": "control_account"
+            },
+            {
+              "account_id": "50050000-0000-4002-a000-000000011902",
+              "purpose": "control_alloc"
+            }
+          ],
+          "amount": 30000
+        },
+        "expected_transfers": [
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4001-a000-000000000003",
+            "debit_account_id": "50050000-0000-4001-a000-000000000004",
+            "leg_number": 1
+          },
+          {
+            "amount": 30000,
+            "credit_account_id": "50050000-0000-4002-a000-000000011902",
+            "debit_account_id": "50050000-0000-4002-a000-000000011903",
+            "leg_number": 2
+          }
+        ],
+        "name": "recon_bank_payment_300",
+        "description": "Reconciliation bank payment for $300 disbursement (accountants' model)."
+      }
+    ]
+  },
+  "status": {
+    "slug_id": "019ce8c4-01f5-748c-869c-4950e42fe3ab",
+    "state": "DRAFT",
+    "revision": 6,
+    "transition_date": 1773431685621,
+    "content_hash": "sha256:a1e87bbe97379578ce9e5138ddc4e8513f484e401aa7ab114ed3659d7934e189",
+    "maker": "system@accounting-rule-engine",
+    "is_executable": false
+  }
+}

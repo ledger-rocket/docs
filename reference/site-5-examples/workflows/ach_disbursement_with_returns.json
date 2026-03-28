@@ -1,0 +1,179 @@
+{
+  "workflow": {
+    "$schema": "https://ledger-rocket.github.io/schemas/domain/v1.1.0/workflow.schema.json",
+    "workflow_id": "019ca454-5b53-72f3-b65e-6dc068a93be6",
+    "code": "disbursement-ach",
+    "site_id": 5,
+    "name": "ACH Disbursement with Returns",
+    "description": "#UC2: ACH Disbursement Processing\n\nRecords the sub-ledger accounting for customer disbursements via the ACH rail, including returns handling and Suspense-based reconciliation.\n\n## Phase 1 -- Disbursement Initiation (Step 1)\n\nCustomer funds are reclassified from Available (20100) to Pending Disbursements (20102) with FDIC tracking mirrors.\n\n## Phase 2 -- ACH File Creation (Steps 2-3)\n\nThe payment gateway assembles a NACHA file. The batch header (T5203/Step 3) establishes the per-file Clearing Files (10104) balance. Per-customer detail lines (T5204/Step 2) draw down the per-file balance and zero the customer's Pending Disbursements.\n\n## Phase 3 -- Returns Handling (Steps 4-6)\n\nACH returns arrive as separate files. The return batch header (T5208/Step 5) establishes a per-file Clearing Files (10104) balance for the return file. Per-customer return detail lines (T5207/Step 4) draw down the per-file balance and park in Unallocated Customer (20900). The reconciliation service (T5209/Step 6) matches returns to customers and moves to Hold (20101).\n\n## Phase 4 -- Bank Statement (Step 7)\n\nThe bank statement confirms the net cash movement on the FBO. Creates Control (10102) balance.\n\n## Phase 5 -- Suspense-Based Reconciliation (Steps 8-10)\n\nThree reconciliation templates zero out all temporary accounts:\n- T5210 (Step 8): Flush disbursement clearing (10101 -> 10103) per customer\n- T5211 (Step 9): Flush return clearing (10103 -> 10101) and release customer Hold to Available, per return\n- T5212 (Step 10): Flush control (10103 -> 10102) per bank statement match\n\n**Final state:** All clearing, control, and suspense accounts net to zero. Customer Available decreased by net disbursements minus returns. Cash (10100) decreased by the bank statement amount.",
+    "require_shared_ledgers": false,
+    "steps": [
+      {
+        "id": "initiate_disbursement",
+        "template_id": 5202,
+        "event_sources": [
+          "disbursement-engine"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "disbursement-initiation",
+        "depends_on_step_ids": [],
+        "diagram_label": "Initiate Disbursement",
+        "description": "Move customer funds from Available to Pending Disbursements, queuing them for inclusion in the next NACHA file. Liability-only -- no house assets touched until the file is created.",
+        "trigger": "disbursement_requested"
+      },
+      {
+        "id": "ach_file_detail",
+        "template_id": 5204,
+        "event_sources": [
+          "ach-processor"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "disbursement-file",
+        "depends_on_step_ids": [
+          "initiate_disbursement"
+        ],
+        "diagram_label": "ACH File Detail",
+        "description": "Record a customer's entry in the NACHA file, drawing down their Pending Disbursements balance. This is the anchor event for the disbursement lifecycle -- a T5210 child means the line has been reconciled.",
+        "trigger": "ach_file_detail_submitted"
+      },
+      {
+        "id": "ach_file_batch_header",
+        "template_id": 5203,
+        "event_sources": [
+          "ach-processor"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "disbursement-file",
+        "depends_on_step_ids": [
+          "initiate_disbursement"
+        ],
+        "diagram_label": "ACH Batch Header",
+        "description": "Establish the expected total for this NACHA file. The per-file clearing balance acts as a loading checksum -- it must reach zero once every customer detail line has loaded.",
+        "trigger": "ach_batch_submitted"
+      },
+      {
+        "id": "return_file_detail",
+        "template_id": 5207,
+        "event_sources": [
+          "ach-processor"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "return-file",
+        "depends_on_step_ids": [],
+        "diagram_label": "Return File Detail",
+        "description": "Load a single ACH return into the unallocated staging area. This is the anchor event for the return lifecycle -- children T5209 (allocation) and T5211 (release) track it through matching and customer release.",
+        "trigger": "ach_return_received"
+      },
+      {
+        "id": "return_file_batch_header",
+        "template_id": 5208,
+        "event_sources": [
+          "ach-processor"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "return-file",
+        "depends_on_step_ids": [],
+        "diagram_label": "Return Batch Header",
+        "description": "Establish the expected total for this ACH return file. Same checksum pattern as the disbursement file -- per-file balance must reach zero when all return lines have loaded.",
+        "trigger": "ach_return_batch_received"
+      },
+      {
+        "id": "allocate_return",
+        "template_id": 5209,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "return-matching",
+        "depends_on_step_ids": [
+          "return_file_detail"
+        ],
+        "diagram_label": "Allocate Return",
+        "description": "Match a returned ACH entry to a specific customer and move it from unallocated staging to that customer's hold position. Funds go to Hold pending reconciliation and release.",
+        "trigger": "return_matched_to_consumer"
+      },
+      {
+        "id": "bank_statement",
+        "template_id": 5205,
+        "event_sources": [
+          "bank-feed"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "bank-confirmation",
+        "depends_on_step_ids": [],
+        "diagram_label": "Bank Statement",
+        "description": "Confirm that cash has physically left the FBO bank account. Creates a per-batch control position for later reconciliation against the disbursement and return clearing sides.",
+        "trigger": "bank_statement_received"
+      },
+      {
+        "id": "recon_disbursement_clearing",
+        "template_id": 5210,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0,
+          1
+        ],
+        "group": "reconciliation",
+        "depends_on_step_ids": [
+          "ach_file_detail"
+        ],
+        "diagram_label": "Disbursement Clearing Flush",
+        "description": "Reconcile a single disbursement line by moving its clearing position into suspense. Fires per detail line matched by the reconciliation service.",
+        "trigger": "disbursement_clearing_matched"
+      },
+      {
+        "id": "recon_returns_clearing_release",
+        "template_id": 5211,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "reconciliation",
+        "depends_on_step_ids": [
+          "allocate_return"
+        ],
+        "diagram_label": "Returns Clearing / Release",
+        "description": "Reconcile a return and release the customer's funds from Hold back to Available, completing the return lifecycle. Fires per return line matched by the reconciliation service.",
+        "trigger": "returns_clearing_matched"
+      },
+      {
+        "id": "recon_bank_payment",
+        "template_id": 5212,
+        "event_sources": [
+          "recon-service"
+        ],
+        "examples": [
+          0
+        ],
+        "group": "reconciliation",
+        "depends_on_step_ids": [
+          "bank_statement"
+        ],
+        "diagram_label": "Bank Payment Recon",
+        "description": "Pair the bank statement against the clearing and return sides by flushing control through suspense. Completes the reconciliation cycle -- all temporary accounts net to zero.",
+        "trigger": "bank_payment_matched"
+      }
+    ]
+  },
+  "status": "DRAFT"
+}
