@@ -1,15 +1,15 @@
 ---
 title: "LedgerRocket Documentation"
-description: "Double-entry bookkeeping platform for financial applications"
+description: "Real-time core ledger and finance platform for financial services"
 ---
 
 ## Welcome to LedgerRocket
 
-LedgerRocket is a programmable double-entry bookkeeping platform that transforms financial events into balanced transfers using template-driven business logic.
+LedgerRocket is a real-time core ledger and finance platform for financial services via API. It centralizes transaction events into a single, strongly consistent, double-entry ledger with an immutable audit trail and matching accounting treatments.
 
 <CardGroup cols={2}>
   <Card title="Platform Overview" icon="rocket" href="/getting-started/platform-overview">
-    What LedgerRocket is and what it can do
+    What LedgerRocket is, who it's for, and how it works
   </Card>
   <Card title="Quickstart" icon="play" href="/getting-started/quickstart">
     Create your first ledger entry in minutes
@@ -24,23 +24,23 @@ LedgerRocket is a programmable double-entry bookkeeping platform that transforms
 
 ## Key Capabilities
 
-- **Multi-tenant isolation** — each site is a fully independent tenant boundary
-- **Dimensional account model** — accounts classified by EntityScope, CounterpartyType, FunctionalDomain, and ValuationRole
-- **Template-driven processing** — JSON templates with CEL expressions define how events become transfers
-- **Maker-checker governance** — templates go through DRAFT → PENDING_APPROVAL → LIVE → DEPRECATED lifecycle
-- **Real-time balances** — balance queries with sub-millisecond latency
-- **Atomic event processing** — events produce balanced double-entry transfers or fail entirely
+- **Efficiency** — single source of truth for all transaction data and business events
+- **Auditable** — fully traceable audit trail back to every business event, in real-time
+- **Compliance** — accounting rules built directly into the processing flow
+- **Speed** — real-time balances, zero batch windows, ultra-fast processing
+- **Composable** — components available as a whole integrated platform or individually
+- **Source-available** — software available as a source-available licence
 
 ## Architecture
 
-LedgerRocket consists of four microservices:
+LedgerRocket follows a layered architecture from upstream systems through to downstream consumers:
 
 | Service | Role |
 |---------|------|
-| **Ledger Service** | Reference data authority — sites, entities, ledgers, accounts, account codes |
+| **Reference Data Service** | Sites, entities, ledgers, accounts, account codes |
 | **Accounting Rule Engine** | Template lifecycle — authoring, validation, maker-checker approval |
 | **Event Service** | Atomic event processing — validates events, evaluates templates, creates transfers |
-| **Balance Service** | Balance queries — real-time, historical, chain analysis |
+| **Balance Cache** | Balance queries — real-time, historical, chain analysis |
 
 <Card title="API Reference" icon="square-terminal" href="https://docs.ledgerrocket.com">
   Interactive API documentation powered by Scalar

@@ -19,8 +19,8 @@ prepared --> committed --> published
 
 | State | Meaning |
 |-------|---------|
-| `prepared` | Event accepted and validated. Transfers computed but not yet submitted to the financial database. |
-| `committed` | Transfers atomically committed to the financial database. Balances are updated. |
+| `prepared` | Event accepted and validated. Transfers computed but not yet submitted to the ledger store. |
+| `committed` | Transfers atomically committed to the ledger store. Balances are updated. |
 | `published` | Event envelope published to the Event Store for audit and downstream consumers. Terminal success state. |
 | `failed` | Processing failed at some stage. Requires investigation. |
 
@@ -29,7 +29,7 @@ prepared --> committed --> published
 1. Client POSTs to `/api/v1/events`
 2. Event Service validates the event, resolves accounts, evaluates templates, computes transfers
 3. Event enters `prepared` state
-4. Transfers are submitted atomically to the financial database
+4. Transfers are submitted atomically to the ledger store
 5. On success, event transitions to `committed`
 6. Event envelope is published to the Event Store
 7. On success, event transitions to `published`
@@ -38,7 +38,7 @@ The entire flow typically completes in milliseconds. The client receives a respo
 
 ## Retry Behavior
 
-If publishing to the Event Store fails, the outbox retries with exponential backoff. The event remains in `committed` state during retries. Transfers are already committed to the financial database, so balances are correct regardless of publish status.
+If publishing to the Event Store fails, the outbox retries with exponential backoff. The event remains in `committed` state during retries. Transfers are already committed to the ledger store, so balances are correct regardless of publish status.
 
 If the Event Service restarts, it scans for events stuck in `prepared` or `committed` states and resumes processing. This is the at-least-once delivery guarantee for the Event Store.
 
@@ -141,4 +141,4 @@ When events are in `failed` state:
 
 ## Stuck Event Recovery
 
-If events are stuck in `prepared` or `committed` after a restart, the service should automatically resume processing them. If they remain stuck after multiple restarts, check the financial database connectivity and service logs for errors during the prepare-to-commit or commit-to-publish transitions.
+If events are stuck in `prepared` or `committed` after a restart, the service should automatically resume processing them. If they remain stuck after multiple restarts, check the ledger store connectivity and service logs for errors during the prepare-to-commit or commit-to-publish transitions.

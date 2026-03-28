@@ -71,4 +71,4 @@ Account code timeseries are also available, providing aggregated balance history
 
 ## Balance Caching
 
-The Balance Service caches **immutable historical data** -- balance snapshots at past timestamps that can never change because transfers are append-only. Current (latest) balances are always fetched live from the financial database. This caching strategy provides fast historical queries without risking stale data for current balances.
+The Balance Service caches **immutable historical data** -- balance snapshots at past timestamps that can never change because transfers are append-only. Current (latest) balances are always fetched live from the ledger store. This caching strategy provides fast historical queries without risking stale data for current balances.

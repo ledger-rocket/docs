@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "LedgerRocket",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#272361",
+    "light": "#1C75BC",
+    "dark": "#6D9EEB"
   },
   "favicon": "/favicon.png",
   "navigation": {

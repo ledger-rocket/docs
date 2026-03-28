@@ -20,7 +20,7 @@ LedgerRocket is composed of four core services, each with a single responsibilit
                                     | resolve accounts,
                                     | ledgers, entities
                                     |
-Client ---POST /events--->  Event Service  ---atomic write--->  Financial Database
+Client ---POST /events--->  Event Service  ---atomic write--->  Ledger Store
                               |         |                        (transfers &
                               |         |                         balances)
                               |         v                            ^
@@ -66,7 +66,7 @@ When a client submits a financial event, the following sequence occurs:
    |
 6. Event is prepared in the outbox (durable, crash-safe)
    |
-7. Transfers are written atomically to the financial database
+7. Transfers are written atomically to the ledger store
    |  - All-or-nothing: either every transfer commits or none do
    |  - Idempotent: duplicate event_ids are safely rejected
    |
@@ -85,7 +85,7 @@ When a client submits a financial event, the following sequence occurs:
 2. Balance Service checks the immutable cache
    |  - Historical balances are immutable and cached permanently
    |
-3. If not cached, Balance Service queries the financial database directly
+3. If not cached, Balance Service queries the ledger store directly
    |
 4. Response includes debits_posted, credits_posted, and timestamp
 ```
@@ -102,7 +102,7 @@ Duplicate:        event_id already exists ---> return existing result
 
 ## Storage Guarantees
 
-The financial database backing LedgerRocket provides:
+The ledger store backing LedgerRocket provides:
 
 - **Strict serializability** -- transfers are ordered and isolated without application-level locking
 - **Atomic batches** -- all transfers in an event commit or none do, with no partial writes

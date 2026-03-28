@@ -1,80 +1,124 @@
 ---
 title: "Platform Overview"
-description: "LedgerRocket is a programmable double-entry bookkeeping platform with stateless microservices for financial record-keeping."
+description: "LedgerRocket is a real-time core ledger and finance platform for financial services, delivered via API."
 ---
 
 ## What Is LedgerRocket?
 
-LedgerRocket is a programmable double-entry bookkeeping platform. It provides a set of stateless microservices that together handle the full lifecycle of financial record-keeping: defining accounts, processing financial events, producing balanced transfers, and querying balances in real time.
+LedgerRocket is a real-time core ledger and finance platform for financial services via API.
 
-Everything is API-driven. You define your chart of accounts, write declarative templates that describe how business events map to accounting entries, and submit events over HTTP or gRPC. LedgerRocket handles the rest -- validating inputs, evaluating template logic, producing double-entry transfers, and writing them atomically to a purpose-built financial database.
+It centralizes transaction events into a single, strongly consistent, double-entry ledger with an immutable audit trail and matching accounting treatments.
+
+You define your chart of accounts, write declarative templates that describe how business events map to accounting entries, and submit events over the API. LedgerRocket handles the rest -- validating inputs, evaluating template logic, producing double-entry transfers, and writing them atomically to a purpose-built ledger store.
 
 ## Who Is It For?
 
-LedgerRocket is built for teams that need a production-grade ledger without building one from scratch:
+LedgerRocket is designed for banks, fintechs, and regulated institutions:
 
+- **Banks and regulated institutions** that need a compliant, auditable core ledger
 - **Fintech companies** building payment products, lending platforms, or money movement infrastructure
 - **Neobanks** that need multi-entity, multi-currency ledgering with real-time balances
 - **Payment processors** that require high-throughput, idempotent transaction recording
 - **FBO (For Benefit Of) providers** managing custodial and beneficial ownership relationships across accounts
 
-## Key Capabilities
+## Why LedgerRocket?
 
-### Multi-tenant isolation
+<CardGroup cols={2}>
+  <Card title="Efficiency" icon="gauge-high">
+    Consolidate transaction data and business events into a single, compliant unified ledger as a single source of truth.
+  </Card>
+  <Card title="Cost Reduction" icon="arrow-trend-down">
+    Eliminate internal reconciliation, cut audit complexity, reduce overhead and operating costs.
+  </Card>
+  <Card title="Auditable" icon="magnifying-glass">
+    Fully traceable audit trail back to every business event, in real-time, cutting audit costs.
+  </Card>
+  <Card title="Integrated" icon="puzzle-piece">
+    Consumes all transactional data and posts to ERP and internal data lake.
+  </Card>
+  <Card title="Compliance" icon="shield-check">
+    Accounting rules built directly into the processing flow via templates.
+  </Card>
+  <Card title="Durability" icon="server">
+    Extreme fault tolerance across multiple data centres.
+  </Card>
+  <Card title="Speed" icon="bolt">
+    Real-time balances, zero batch windows, ultra-fast event processing.
+  </Card>
+  <Card title="Scale" icon="building">
+    Designed for banks, fintechs, and regulated institutions at production scale.
+  </Card>
+  <Card title="Execution" icon="rocket">
+    Faster product launches via event-driven templates; audit-ready by design.
+  </Card>
+  <Card title="Flexible Integration" icon="arrows-rotate">
+    Consolidating view receiving data from existing systems or single source of truth.
+  </Card>
+  <Card title="Composable" icon="cubes">
+    Components interchangeable: available as a whole integrated platform or individually.
+  </Card>
+  <Card title="Source-Available" icon="code">
+    Software available as a source-available licence, including deployment scripts.
+  </Card>
+</CardGroup>
 
-All data is scoped to a `site_id`. Cross-site access is impossible by design. Each site operates as an independent tenant with its own entities, ledgers, accounts, and templates.
+## High-Level Architecture
 
-### Multi-entity and multi-currency
+LedgerRocket follows a layered architecture with five stages:
 
-A single site can manage multiple entities (companies, individuals) across multiple currencies. Ledgers are scoped to one entity and one currency, providing clean separation while supporting complex organizational structures.
+```text
+Upstream       Ingestion        Core            Derivations       Consumers
+               & Rules          Persistence     & Analytics
 
-### Template-driven accounting
++---------+    +-----------+    +-----------+   +------------+    +----------------+
+| Product |    | Accounting|    |           |   |            |    | Reconciliation |
+| Systems |--->| Rule      |--->| Event     |-->| Data Lake  |--->| Engine         |
+| (APIs)  |    | Engine    |    | Store     |   |            |    +----------------+
++---------+    +-----------+    +-----------+   | Balance    |    | GUI            |
+               | Event     |    | Journal   |   | Cache      |    +----------------+
+               | Service   |--->| Store     |   +------------+    | ERP            |
+               +-----------+    | Ledger    |                     +----------------+
+               | Reference |    +-----------+                     | MCP / AI       |
+               | Data      |                                      | Assistant      |
+               | Service   |                                      +----------------+
+               +-----------+                                      | Others         |
+                                                                  +----------------+
+```
 
-Accounting rules are defined as declarative templates, not application code. Templates specify how a business event (e.g., "customer payment") maps to double-entry transfers. They use CEL (Common Expression Language) for variable computation and validation, with integer-only arithmetic to prevent rounding errors.
+| Layer | Components | Purpose |
+|-------|-----------|---------|
+| **Upstream** | Product systems, external APIs | Source of financial events |
+| **Ingestion & Rules** | Accounting Rule Engine, Event Service, Reference Data Service | Validates events, evaluates templates, resolves accounts |
+| **Core Persistence** | Event Store, Journal Store Ledger | Immutable storage for events and double-entry transfers |
+| **Derivations & Analytics** | Data Lake, Balance Cache | Derived views, real-time balance queries, historical analytics |
+| **Consumers** | Reconciliation Engine, GUI, ERP, MCP/AI Assistant | Downstream systems that consume ledger data |
 
-### Purpose-built financial storage
-
-All transfers are written atomically to a purpose-built financial database that provides strict serializability, crash consistency, and high throughput for double-entry workloads.
-
-### Integer-only math
-
-All monetary amounts are stored and computed as integer minor units (cents, satoshis). There are no floating-point numbers anywhere in the money path. Percentage calculations use basis points with banker's rounding.
-
-### Immutable records
-
-Transfers, once written, cannot be modified or deleted. Corrections are made by posting new reversing entries. This provides a complete, auditable history of all financial activity.
-
-## Service Architecture
-
-LedgerRocket consists of four core services:
+## Core Services
 
 | Service | Responsibility |
 |---------|----------------|
-| **Ledger Service** | Reference data authority. Manages sites, entities, ledgers, accounts, account codes, currencies, and countries. |
-| **Event Service** | Event processing engine. Accepts financial events, resolves accounts, evaluates templates, produces transfers, and commits them atomically. |
-| **Balance Service** | Balance queries. Provides real-time and historical balance lookups with caching for immutable historical data. |
-| **Accounting Rule Engine** | Template management. Handles the lifecycle of accounting templates (draft, approval, live, deprecated) used by the Event Service. |
+| **Reference Data Service** | Manages sites, entities, ledgers, accounts, account codes, currencies, and countries. |
+| **Accounting Rule Engine** | Template lifecycle -- authoring, validation, maker-checker approval (DRAFT, PENDING_APPROVAL, LIVE, DEPRECATED). |
+| **Event Service** | Accepts financial events, resolves accounts, evaluates templates, produces transfers, and commits them atomically. |
+| **Balance Cache** | Real-time and historical balance lookups with caching for immutable historical data. |
 
-### How they connect
+## Deployment Models
 
-```text
-                    +-----------------+
-                    | Ledger Service  |
-                    | (reference data)|
-                    +--------+--------+
-                             ^
-                             | resolve accounts,
-                             | ledgers, entities
-                             |
-Client ---POST /events---> Event Service ---atomic write---> Financial Database
-                             |                                    ^
-                             | evaluate templates                 |
-                             v                                    |
-                    Accounting Rule Engine              Balance Service
-                    (template definitions)          (balance queries + cache)
-```
+LedgerRocket supports three deployment models to fit your operational requirements:
 
-## Design Philosophy
+<CardGroup cols={3}>
+  <Card title="On-Premises" icon="building">
+    Fully deployed and operated in your environment. End-to-end control by your team.
+  </Card>
+  <Card title="SaaS" icon="cloud">
+    Fully hosted and operated by Ledger Rocket. We control the environment.
+  </Card>
+  <Card title="Build & Handover" icon="handshake">
+    Ledger Rocket builds the solution in a dedicated environment. Solution handover, customer managed going forward.
+  </Card>
+</CardGroup>
+
+## Key Design Principles
 
 ### Stateless microservices
 
@@ -88,6 +132,10 @@ All services expose OpenAPI 3.1 specifications. Error responses follow RFC 9457 
 
 Every event carries a UUIDv7 `event_id` that serves as an idempotency key. Duplicate submissions are detected and safely ignored. If processing fails mid-flight, an outbox recovery mechanism completes the event automatically.
 
-## Why LedgerRocket?
+### Immutable records
 
-Building a correct double-entry ledger is deceptively hard. You need atomic multi-row writes, idempotency, immutable audit trails, currency-safe integer math, and balance consistency under concurrency. LedgerRocket provides all of this out of the box, plus a template system that separates accounting rules from application code.
+Transfers, once written, cannot be modified or deleted. Corrections are made by posting new reversing entries. This provides a complete, auditable history of all financial activity.
+
+### Integer-only math
+
+All monetary amounts are stored and computed as integer minor units (cents, satoshis). There are no floating-point numbers anywhere in the money path. Percentage calculations use basis points with banker's rounding.
