@@ -36,7 +36,7 @@ The most common validation pattern prevents the same account from appearing in c
 }
 ```
 
-This validation from **template 5617** (`sweep_recon_bank_payment_rail`) ensures the debit and credit sides of the reconciliation use different account codes -- preventing an event from accidentally debiting and crediting the same account.
+This validation from a **sweep reconciliation** template ensures the debit and credit sides of the reconciliation use different account codes -- preventing an event from accidentally debiting and crediting the same account.
 
 ### Preventing Self-Referential Resolution
 
@@ -48,7 +48,7 @@ This validation from **template 5617** (`sweep_recon_bank_payment_rail`) ensures
 }
 ```
 
-This validation from **template 5405** (`suspense_resolve_inbound_credit`) prevents an operator from accidentally resolving a suspense balance back into the same suspense account.
+This validation from a **suspense resolution** template prevents an operator from accidentally resolving a suspense balance back into the same suspense account.
 
 ### Multi-Validation Templates
 
@@ -73,11 +73,11 @@ This pair of validations from a reconciliation template ensures that both the ec
 
 ## Real-World Examples from Production Templates
 
-### Template 5617: Sweep Reconciliation Bank Payment
+### Sweep Reconciliation Bank Payment
 
 ```json
 {
-    "template_id": 5617,
+    "template_id": 200,
     "name": "sweep_recon_bank_payment_rail",
     "validations": [
         {
@@ -94,11 +94,11 @@ This pair of validations from a reconciliation template ensures that both the ec
 }
 ```
 
-### Template 5602: Sweep Customer Allocation
+### Sweep Customer Allocation
 
 ```json
 {
-    "template_id": 5602,
+    "template_id": 201,
     "name": "sweep_customer_allocation",
     "validations": [
         {
@@ -150,4 +150,4 @@ Many templates have no validations at all. This is valid -- it means the templat
 "validations": []
 ```
 
-The majority of production templates in site 5 use empty validations, relying instead on `account_code_validations` and `metadata_schema` for input constraints.
+Many production templates use empty validations, relying instead on `account_code_validations` and `metadata_schema` for input constraints.

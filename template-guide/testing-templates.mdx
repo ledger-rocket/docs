@@ -29,7 +29,7 @@ Validates the template structure and compiles CEL expressions without requiring 
 {
     "template": {
         "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
-        "site_id": 5,
+        "site_id": 1,
         "template_id": 9999,
         "name": "my_test_template",
         "..."
@@ -76,8 +76,8 @@ Runs the full processing pipeline -- account enrichment, metadata schema validat
 {
     "event": {
         "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
-        "site_id": 5,
-        "template_ids": [5403],
+        "site_id": 1,
+        "template_ids": [100],
         "event_id": "018f3f0b-4a6f-7b31-9a7a-2b9b1d2a5c01",
         "event_source": "api",
         "occurred_at": 1705315800000,
@@ -166,8 +166,8 @@ Once your template generates correct transfers, add example scenarios to the tem
         "description": "$25.00 wire transfer fee identified in suspense.",
         "event_request": {
             "$schema": "https://ledger-rocket.github.io/schemas/domain/event.schema.json",
-            "site_id": 5,
-            "template_ids": [5403],
+            "site_id": 1,
+            "template_ids": [100],
             "event_id": "018f3f0b-4a6f-7b31-9a7a-2b9b1d2a5c01",
             "event_source": "api",
             "occurred_at": 1705315800000,
@@ -203,13 +203,13 @@ Once the template is tested and includes examples, submit it for maker-checker r
 
 ```bash
 # Create/update the template (DRAFT)
-curl -X PUT https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/5/templates/5403 \
+curl -X PUT https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/1/templates/100 \
   -H "Content-Type: application/json" \
   -H "x-api-key: lr-test-20250701" \
   -d @my-template.json
 
 # Submit for approval
-curl -X POST https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/5/templates/5403/submit \
+curl -X POST https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/1/templates/100/submit \
   -H "x-api-key: lr-test-20250701"
 ```
 
@@ -233,5 +233,5 @@ When validation fails, errors are categorized to help you find the root cause:
 - **Start with a known-good template.** Copy an existing production template and modify it, rather than starting from scratch.
 - **Test incrementally.** Validate after each change, not after writing the entire template.
 - **Use the explain endpoint sparingly.** It returns detailed traces that are useful for debugging but add response overhead.
-- **Check account code masks.** A common error is sending an account with code `10100` when the mask requires `10102`.
+- **Check account code masks.** A common error is sending an account with code `1000` when the mask requires `1002`.
 - **Verify metadata field names.** Typos in `extra_metadata` field names cause validation failures because `additionalProperties: false` rejects unknown fields.

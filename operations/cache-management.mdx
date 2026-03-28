@@ -43,7 +43,7 @@ Templates are loaded from the template store at startup and held in memory. They
 After updating templates in the Ledger Service, trigger a cache refresh so the Event Service picks up the changes:
 
 ```bash
-curl -s -X POST "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/5/templates:refresh-cache" \
+curl -s -X POST "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/1/templates:refresh-cache" \
   -H "x-api-key: lr-test-20250701" | jq .
 ```
 
@@ -54,7 +54,7 @@ This reloads all templates for the specified site. The operation is synchronous 
 Check which templates are loaded and when they were last refreshed:
 
 ```bash
-curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/5/templates:status" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/1/templates:status" \
   -H "x-api-key: lr-test-20250701" | jq .
 ```
 
@@ -69,14 +69,14 @@ The response includes:
 View the full list of templates available for a site:
 
 ```bash
-curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/5/templates" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/1/templates" \
   -H "x-api-key: lr-test-20250701" | jq '.[].template_id'
 ```
 
 To inspect a specific template:
 
 ```bash
-curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/5/templates/5104" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/1/templates/100" \
   -H "x-api-key: lr-test-20250701" | jq .
 ```
 

@@ -49,7 +49,7 @@ Events in `failed` state are not automatically retried. They require manual inve
 ### List Outbox Records
 
 ```bash
-curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/admin/outbox?site_id=5" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/admin/outbox?site_id=1" \
   -H "x-api-key: lr-test-20250701" | jq .
 ```
 
@@ -57,7 +57,7 @@ Returns recent outbox records with their current state. Use query parameters to 
 
 ```bash
 # Only failed events
-curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/admin/outbox?site_id=5&state=failed" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/admin/outbox?site_id=1&state=failed" \
   -H "x-api-key: lr-test-20250701" | jq .
 ```
 
@@ -117,14 +117,14 @@ When events are in `failed` state:
 1. **Get the failed records:**
 
    ```bash
-   curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/admin/outbox?site_id=5&state=failed" \
+   curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/admin/outbox?site_id=1&state=failed" \
      -H "x-api-key: lr-test-20250701" | jq '.[] | {event_id, error}'
    ```
 
 2. **Check the event details:**
 
    ```bash
-   curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/events/FAILED_EVENT_UUID?site_id=5" \
+   curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/events/FAILED_EVENT_UUID?site_id=1" \
      -H "x-api-key: lr-test-20250701" | jq .
    ```
 

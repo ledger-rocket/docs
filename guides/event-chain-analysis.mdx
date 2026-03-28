@@ -25,7 +25,7 @@ All of these share the same `original_event_id`, so querying the chain shows the
 Retrieve all events and transfers in a chain:
 
 ```bash
-curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/events/EVENT_UUID/chain?site_id=5" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/events/EVENT_UUID/chain?site_id=1" \
   -H "x-api-key: lr-test-20250701" | jq .
 ```
 
@@ -36,7 +36,7 @@ The response includes every transfer grouped by event, showing the debit/credit 
 Get the net balance impact of an entire chain:
 
 ```bash
-curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/events/EVENT_UUID/balance?site_id=5" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/events/EVENT_UUID/balance?site_id=1" \
   -H "x-api-key: lr-test-20250701" | jq .
 ```
 
@@ -47,7 +47,7 @@ This returns the aggregate credits and debits across all events in the chain. Fo
 See how a specific account's balance is decomposed by event chain:
 
 ```bash
-curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/accounts/ACCOUNT_UUID/chain-balances?site_id=5" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/accounts/ACCOUNT_UUID/chain-balances?site_id=1" \
   -H "x-api-key: lr-test-20250701" | jq .
 ```
 
@@ -62,7 +62,7 @@ curl -s -X POST "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/c
   -H "Content-Type: application/json" \
   -H "x-api-key: lr-test-20250701" \
   -d '{
-    "site_id": 5,
+    "site_id": 1,
     "event_ids": [
       "019a0001-0000-7000-8000-000000000001",
       "019a0001-0000-7000-8000-000000000002",
@@ -79,18 +79,18 @@ Use this for bulk reconciliation checks -- pass all event IDs from a batch and v
 
 ```bash
 # All transfers created by a single event
-curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/events/EVENT_UUID/transfers?site_id=5" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/events/EVENT_UUID/transfers?site_id=1" \
   -H "x-api-key: lr-test-20250701" | jq .
 
 # Enriched transfers (includes account names, entity details, ledger metadata)
-curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/events/EVENT_UUID/transfers/enriched?site_id=5" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/events/EVENT_UUID/transfers/enriched?site_id=1" \
   -H "x-api-key: lr-test-20250701" | jq .
 ```
 
 ### Transfers by Account
 
 ```bash
-curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/accounts/ACCOUNT_UUID/transfers?site_id=5" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/accounts/ACCOUNT_UUID/transfers?site_id=1" \
   -H "x-api-key: lr-test-20250701" | jq .
 ```
 
@@ -104,14 +104,14 @@ When investigating a balance discrepancy:
 2. **Query chain-balances** to find which chain left the residual:
 
    ```bash
-   curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/accounts/ACCOUNT_UUID/chain-balances?site_id=5" \
+   curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/accounts/ACCOUNT_UUID/chain-balances?site_id=1" \
      -H "x-api-key: lr-test-20250701" | jq '.[] | select(.net_balance != "0")'
    ```
 
 3. **Get the chain detail** to see all events in the problematic chain:
 
    ```bash
-   curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/events/CHAIN_ROOT_UUID/chain?site_id=5" \
+   curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/events/CHAIN_ROOT_UUID/chain?site_id=1" \
      -H "x-api-key: lr-test-20250701" | jq .
    ```
 
@@ -121,10 +121,10 @@ When investigating a balance discrepancy:
 
 | Account | Non-Zero Means | Likely Cause |
 |---------|---------------|--------------|
-| Clearing (10101) | Allocation file loaded but not reconciled | Missing T5402 (consumer release) |
-| Control (10102) | Bank statement ingested but not paired | Missing T5407 (control flush) |
-| Suspense (10103) | Clearing flushed but reconciliation incomplete | Missing bank payment reconciliation step |
-| Unallocated (20900) | Detail lines loaded but consumers not matched | Missing T5104 (consumer match) |
+| Clearing | Allocation file loaded but not reconciled | Missing consumer release step |
+| Control | Bank statement ingested but not paired | Missing control flush step |
+| Suspense | Clearing flushed but reconciliation incomplete | Missing bank payment reconciliation step |
+| Unallocated | Detail lines loaded but consumers not matched | Missing consumer match step |
 
 ### Validate Before Submitting
 
@@ -135,8 +135,8 @@ curl -s -X POST "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/eve
   -H "Content-Type: application/json" \
   -H "x-api-key: lr-test-20250701" \
   -d '{
-    "site_id": 5,
-    "template_ids": [5104],
+    "site_id": 1,
+    "template_ids": [100],
     "amount": 5000,
     "accounts": [
       {"account_id": "UNALLOC_UUID", "purpose": "unallocated_customer"},

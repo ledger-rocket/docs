@@ -73,7 +73,7 @@ Asset-to-asset or liability-to-liability reclassification within the same entity
 }
 ```
 
-Used in: bank statement ingestion (T5401), sweep payment initiation (T5614), consumer fund release.
+Used in: bank statement ingestion, sweep payment initiation, consumer fund release.
 
 ### `settlement_clearing`
 
@@ -90,7 +90,7 @@ Clearing and settlement operations that zero out suspense, control, or clearing 
 }
 ```
 
-Used in: reconciliation flush (T5402), sweep reconciliation (T5617), bank payment reconciliation (T5215).
+Used in: reconciliation flush, sweep reconciliation, bank payment reconciliation.
 
 ### `adjustment_manual`
 
@@ -107,7 +107,7 @@ Manual corrections and allocations that require investigation and approval. Typi
 }
 ```
 
-Used in: suspense resolve bank fee (T5403), control orphan resolution (T5406), suspense resolve inbound credit (T5405).
+Used in: suspense resolve bank fee, control orphan resolution, suspense resolve inbound credit.
 
 ### `accrual_non_interest`
 
@@ -124,7 +124,7 @@ Recognition of non-interest income or expense items during reconciliation.
 }
 ```
 
-Used in: suspense resolve bank fee (T5403).
+Used in: suspense resolve bank fee.
 
 ## Policy Reference Examples
 
@@ -144,13 +144,13 @@ Used in: suspense resolve bank fee (T5403).
 | `IAS_1` | Presentation of Financial Statements |
 | `IFRS_9` | Financial Instruments |
 
-## Real-World Example: Template 5402
+## Real-World Example: Reconciliation Flush Clearing
 
 This four-leg reconciliation template uses two different treatment types and references both IFRS policies:
 
 ```json
 {
-    "template_id": 5402,
+    "template_id": 103,
     "name": "reconciliation_flush_clearing",
     "accounting_treatments": [
         {

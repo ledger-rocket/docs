@@ -10,8 +10,8 @@ Templates are the core configuration objects in LedgerRocket. Each template decl
 ```json
 {
   "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
-  "site_id": 5,
-  "template_id": 5403,
+  "site_id": 1,
+  "template_id": 100,
   "name": "suspense_resolve_bank_fee",
   "description": "Manually resolve an investigated orphaned Suspense balance...",
   "category": "RECONCILIATION",
@@ -20,7 +20,7 @@ Templates are the core configuration objects in LedgerRocket. Each template decl
   "trigger": "Operations analyst approves clearing an aged orphaned Suspense balance...",
   "capabilities": [],
   "ledger_scope_descriptions": {
-    "economic": "Economic on-balance-sheet ledger (Economic Ledger 5001)..."
+    "economic": "Economic on-balance-sheet ledger..."
   },
   "financial_statements_impact": [...],
   "accounting_treatments": [...],
@@ -111,13 +111,13 @@ The `account_code_validations` array defines which accounts the template expects
     },
     {
         "purpose": "suspense_account",
-        "mask": "10103",
+        "mask": "1003",
         "description": "Reconciliation suspense / mixing bowl asset account."
     }
 ]
 ```
 
-The `mask` field is a fixed-width digit pattern. The value `"50100"` means the account code must be exactly `50100`. The pipe character `|` separates alternatives: `"10102|10103"` accepts either code. A bare `"*"` matches any code.
+The `mask` field is a fixed-width digit pattern. The value `"50100"` means the account code must be exactly `50100`. The pipe character `|` separates alternatives: `"1002|1003"` accepts either code. A bare `"*"` matches any code.
 
 These purposes are then referenced in legs as `accounts.{purpose}.account_id` and in validations as `accounts.{purpose}.account_code.code`.
 

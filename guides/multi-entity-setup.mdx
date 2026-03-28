@@ -37,7 +37,7 @@ Entities represent real-world actors. Each entity can be a beneficial owner, a c
 The platform operator that runs the payment product.
 
 ```bash
-curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/entities \
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/entities \
   -H "Content-Type: application/json" \
   -H "x-api-key: lr-test-20250701" \
   -d '{
@@ -52,7 +52,7 @@ curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/ent
 The bank that holds the FBO (For Benefit Of) account.
 
 ```bash
-curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/entities \
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/entities \
   -H "Content-Type: application/json" \
   -H "x-api-key: lr-test-20250701" \
   -d '{
@@ -67,7 +67,7 @@ curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/ent
 End users whose funds flow through the platform.
 
 ```bash
-curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/entities \
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/entities \
   -H "Content-Type: application/json" \
   -H "x-api-key: lr-test-20250701" \
   -d '{
@@ -86,7 +86,7 @@ Each ledger is scoped to one entity and one currency. A typical setup has:
 - **Customer ledgers** -- one per customer+currency if needed
 
 ```bash
-curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/ledgers \
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/ledgers \
   -H "Content-Type: application/json" \
   -H "x-api-key: lr-test-20250701" \
   -d '{
@@ -113,7 +113,7 @@ Account codes define the classification structure. They do not hold balances. Ty
 | 50xxx | EXPENSE | Fees, bank charges |
 
 ```bash
-curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/account-codes \
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/account-codes \
   -H "Content-Type: application/json" \
   -H "x-api-key: lr-test-20250701" \
   -d '{
@@ -143,11 +143,11 @@ Key operational account codes:
 Accounts hold balances and belong to a ledger. Each account has a beneficial owner (`entity_id`) and optionally a custodian (`custodian_entity_id`).
 
 ```bash
-curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts \
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/accounts \
   -H "Content-Type: application/json" \
   -H "x-api-key: lr-test-20250701" \
   -d '{
-    "ledger_id": 5001,
+    "ledger_id": 1001,
     "account_code": "10100",
     "entity_id": "PLATFORM_ENTITY_UUID",
     "custodian_entity_id": "BANK_ENTITY_UUID",
@@ -161,11 +161,11 @@ curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/acc
 Create per-customer accounts on the operational ledger:
 
 ```bash
-curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts \
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/accounts \
   -H "Content-Type: application/json" \
   -H "x-api-key: lr-test-20250701" \
   -d '{
-    "ledger_id": 5001,
+    "ledger_id": 1001,
     "account_code": "20100",
     "entity_id": "CUSTOMER_ENTITY_UUID",
     "custodian_entity_id": "BANK_ENTITY_UUID",
@@ -189,11 +189,11 @@ To link accounts, create both sides referencing the same `external_id` so the re
 
 ```bash
 # Platform-side asset (nostro)
-curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts \
+curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/accounts \
   -H "Content-Type: application/json" \
   -H "x-api-key: lr-test-20250701" \
   -d '{
-    "ledger_id": 5001,
+    "ledger_id": 1001,
     "account_code": "10100",
     "entity_id": "PLATFORM_ENTITY_UUID",
     "custodian_entity_id": "BANK_ENTITY_UUID",
@@ -208,14 +208,14 @@ After setup, confirm the structure:
 
 ```bash
 # List all entities for the site
-curl -s https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/entities \
+curl -s https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/entities \
   -H "x-api-key: lr-test-20250701" | jq '.[] | {name, entity_type}'
 
 # List all ledgers
-curl -s https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/ledgers \
+curl -s https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/ledgers \
   -H "x-api-key: lr-test-20250701" | jq '.[] | {ledger_id, name, currency_code}'
 
 # List account codes
-curl -s https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/account-codes \
+curl -s https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/account-codes \
   -H "x-api-key: lr-test-20250701" | jq '.[] | {code, name, account_type}'
 ```

@@ -71,11 +71,11 @@ When FBO balances exceed FDIC insurance limits, sweeps move funds to additional 
 
 The sweep lifecycle:
 
-1. **Aggregate** (T5601) -- create clearing positions on source and destination rails
-2. **Customer allocation** (T5602) -- per-customer expected movements on the FDIC tracking ledger
-3. **Payment initiated** (T5603) -- clear sweep intentions once payment is instructed
-4. **Bank statements** (T5604/T5605) -- confirm cash left the FBO and arrived at the sweep bank
-5. **Reconciliation** (T5606-T5611) -- flush clearing/control through suspense on both sides
+1. **Aggregate** -- create clearing positions on source and destination rails
+2. **Customer allocation** -- per-customer expected movements on the FDIC tracking ledger
+3. **Payment initiated** -- clear sweep intentions once payment is instructed
+4. **Bank statements** -- confirm cash left the FBO and arrived at the sweep bank
+5. **Reconciliation** -- flush clearing/control through suspense on both sides
 
 After reconciliation, the allocation ledger reflects the new physical fund locations:
 
@@ -96,11 +96,11 @@ Querying FDIC positions:
 
 ```bash
 # Get a customer's FDIC position at the FBO bank
-curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/accounts/CUSTOMER_FBO_MAIN_UUID/balance?site_id=5" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/accounts/CUSTOMER_FBO_MAIN_UUID/balance?site_id=1" \
   -H "x-api-key: lr-test-20250701" | jq .
 
 # Get aggregate FDIC position by account code across all customers
-curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/account-codes/21100/balance?site_id=5" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/account-codes/21100/balance?site_id=1" \
   -H "x-api-key: lr-test-20250701" | jq .
 ```
 
@@ -110,11 +110,11 @@ The economic ledger and allocation ledger must agree. Total customer liabilities
 
 ```bash
 # Economic ledger: total customer liabilities
-curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/account-codes/20100/balance?site_id=5" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/account-codes/20100/balance?site_id=1" \
   -H "x-api-key: lr-test-20250701" | jq '.credits_posted, .debits_posted'
 
 # Allocation ledger: total FDIC positions
-curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/account-codes/21100/balance?site_id=5" \
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/account-codes/21100/balance?site_id=1" \
   -H "x-api-key: lr-test-20250701" | jq '.credits_posted, .debits_posted'
 ```
 

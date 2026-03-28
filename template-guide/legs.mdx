@@ -35,7 +35,7 @@ For example, given these account code validations:
 ```json
 "account_code_validations": [
     { "purpose": "bank_fees_account", "mask": "50100", "description": "..." },
-    { "purpose": "suspense_account", "mask": "10103", "description": "..." }
+    { "purpose": "suspense_account", "mask": "1003", "description": "..." }
 ]
 ```
 
@@ -91,8 +91,8 @@ The scope value must match a key in the template's `ledger_scope_descriptions`:
 
 ```json
 "ledger_scope_descriptions": {
-    "operational": "Operational ledger (ID 5001) where Settled represents confirmed bank cash.",
-    "fdic_tracking": "FDIC tracking ledger (ID 5002) where Cash Balances positions are tracked."
+    "operational": "Operational ledger where Settled represents confirmed bank cash.",
+    "fdic_tracking": "FDIC tracking ledger where Cash Balances positions are tracked."
 }
 ```
 
@@ -112,7 +112,7 @@ The simplest templates have one leg that moves the event amount between two acco
 
 ```json
 {
-    "template_id": 5403,
+    "template_id": 100,
     "name": "suspense_resolve_bank_fee",
     "legs": [
         {
@@ -138,11 +138,11 @@ Templates that operate across multiple ledgers or perform multi-step accounting 
 
 ### Two-Leg: Dual-Ledger Operations
 
-**Template 5401** (`bank_statement_ingestion_inbound`) records an inbound bank statement line on both the economic and allocation ledgers:
+A **bank statement ingestion** template records an inbound bank statement line on both the economic and allocation ledgers:
 
 ```json
 {
-    "template_id": 5401,
+    "template_id": 101,
     "name": "bank_statement_ingestion_inbound",
     "legs": [
         {
@@ -175,11 +175,11 @@ Leg 1 operates on the economic/operational ledger. Leg 2 mirrors the same amount
 
 ### Two-Leg: Through-Account (Suspense Clearing)
 
-**Template 5406** (`control_orphan_resolution`) moves funds through a suspense account in two steps:
+A **control orphan resolution** template moves funds through a suspense account in two steps:
 
 ```json
 {
-    "template_id": 5406,
+    "template_id": 102,
     "name": "control_orphan_resolution",
     "legs": [
         {

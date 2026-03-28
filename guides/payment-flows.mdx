@@ -1,9 +1,9 @@
 ---
 title: "Payment Flows"
-description: "How to model common payment flows using LedgerRocket templates. All examples reference real templates from the site 5 configuration."
+description: "How to model common payment flows using LedgerRocket templates."
 ---
 
-How to model common payment flows using LedgerRocket templates. All examples reference real templates from the site 5 configuration.
+How to model common payment flows using LedgerRocket templates.
 
 ## Core Concepts
 
@@ -23,11 +23,11 @@ Key account codes used across flows:
 | 20102 | Pending Disbursements | Queued for ACH payout |
 | 20900 | Unallocated Customer | Deposits not yet matched |
 
-## Deposit Flow (Templates 5108, 5103, 5104, 5401, 5407, 5402)
+## Deposit Flow
 
 Processes inbound deposit allocation files through ingestion, consumer matching, and bank-confirmed release.
 
-### Step 1: Allocation Batch Header (T5108)
+### Step 1: Allocation Batch Header
 
 Record the arrival of an allocation file. Establishes the per-file clearing balance as a loading checksum.
 
@@ -40,8 +40,8 @@ curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/even
   -H "x-api-key: lr-test-20250701" \
   -d '{
     "event_id": "019a0001-0000-7000-8000-000000000001",
-    "site_id": 5,
-    "template_ids": [5108],
+    "site_id": 1,
+    "template_ids": [100],
     "amount": 50000,
     "occurred_at": 1705315800000,
     "event_source": "allocation-engine",
@@ -53,14 +53,14 @@ curl -s -X POST https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/even
   }'
 ```
 
-### Step 2: Allocation Detail Lines (T5103)
+### Step 2: Allocation Detail Lines
 
 Load individual deposit lines into the unallocated staging area. Draws down the per-file clearing balance.
 
 - DR Allocation Clearing per-file (10104) / CR Unallocated per-file (10104)
 - Fires per line item in the allocation file
 
-### Step 3: Consumer Match (T5104)
+### Step 3: Consumer Match
 
 Reconciliation service resolves raw consumer references to real account IDs. Moves funds from unallocated staging to consumer hold.
 
@@ -68,7 +68,7 @@ Reconciliation service resolves raw consumer references to real account IDs. Mov
 - Mirrors on allocation ledger for FDIC tracking
 - Funds go to Hold (not Available) because matching may complete before bank confirmation
 
-### Step 4: Bank Statement Ingestion (T5401)
+### Step 4: Bank Statement Ingestion
 
 Record inbound bank statement lines confirming physical cash arrival.
 
@@ -76,14 +76,14 @@ Record inbound bank statement lines confirming physical cash arrival.
 - DR Cash Balances FBO (11900) / CR Cash Balances Control (11902) on allocation ledger
 - Fires per bank statement line item
 
-### Step 5: Control Flush (T5407)
+### Step 5: Control Flush
 
 Pair the bank statement against the allocation file at the aggregate level.
 
 - DR Control (10102) / CR Suspense (10103)
 - Fires once per file pair
 
-### Step 6: Consumer Release (T5402)
+### Step 6: Consumer Release
 
 Release consumer funds from Hold to Available. Clears suspense.
 
@@ -93,52 +93,52 @@ Release consumer funds from Hold to Available. Clears suspense.
 
 **Final state:** Clearing, Control, and Suspense all net to zero. Customer Available increased. Settled increased.
 
-## Disbursement Flow (Templates 5202, 5203, 5204, 5205, 5210, 5211, 5212)
+## Disbursement Flow
 
 Records customer payouts via the ACH rail, including returns handling.
 
-### Step 1: Disbursement Initiate (T5202)
+### Step 1: Disbursement Initiate
 
 Move customer funds from Available to Pending Disbursements. Liability-only -- no house assets touched.
 
 - DR Customer Available (20100) / CR Pending Disbursements (20102)
 - DR Customer FBO Main (21100) / CR Customer FBO ACH Payable (21102) on allocation ledger
 
-### Step 2: ACH Batch Header (T5203)
+### Step 2: ACH Batch Header
 
 Establish the per-file clearing balance for the NACHA file.
 
 - DR ACH Clearing Files per-file (10104) / CR Clearing Total (10101)
 - Fires once per NACHA file
 
-### Step 3: Per-Customer ACH Submission (T5204)
+### Step 3: Per-Customer ACH Submission
 
 Record each customer's entry in the NACHA file. Zeros out Pending Disbursements.
 
 - DR Pending Disbursements (20102) / CR ACH Clearing Files per-file (10104)
 - Fires per customer in the file
 
-### Step 4: Bank Statement Received (T5205)
+### Step 4: Bank Statement Received
 
 Confirm cash has physically left the FBO account.
 
 - DR Control (10102) / CR Settled (10100) -- reversed from deposit direction
 - Fires per bank statement line
 
-### Step 5: Disbursement Clearing Reconciliation (T5210)
+### Step 5: Disbursement Clearing Reconciliation
 
 Flush disbursement clearing through Suspense per detail line.
 
 - DR Clearing Total (10101) / CR Suspense (10103)
 
-### Step 6: Returns Clearing and Release (T5211)
+### Step 6: Returns Clearing and Release
 
 For ACH returns: flush return clearing and release customer funds from Hold back to Available.
 
 - DR Suspense (10103) / CR Clearing Total (10101) -- reverse direction
 - DR Customer Hold (20101) / CR Customer Available (20100)
 
-### Step 7: Bank Payment Reconciliation (T5212)
+### Step 7: Bank Payment Reconciliation
 
 Pair the bank statement against clearing and return sides.
 
@@ -146,39 +146,39 @@ Pair the bank statement against clearing and return sides.
 
 **Final state:** All clearing, control, and suspense accounts net to zero. Customer Available decreased by net disbursements minus returns.
 
-## FDIC Sweep Flow (Templates 5601-5611)
+## FDIC Sweep Flow
 
 Manages fund movements between the Master FBO and the Sweep Network for FDIC insurance coverage.
 
 ### Phase 1: Aggregation and Allocation
 
-**Aggregate FBO to Sweep (T5601):** Create batch-level clearing positions and queue sweep intentions.
+**Aggregate FBO to Sweep:** Create batch-level clearing positions and queue sweep intentions.
 
-**Customer Allocation (T5602):** Per-customer expected movements on the FDIC tracking ledger. Anchors each customer's cash-in-transit chain.
+**Customer Allocation:** Per-customer expected movements on the FDIC tracking ledger. Anchors each customer's cash-in-transit chain.
 
 ### Phase 2: Payment and Bank Confirmation
 
-**Payment Initiated (T5603):** Clear sweep intentions from the queue once the bank payment is instructed. Moves sweep from "queued" to "in flight."
+**Payment Initiated:** Clear sweep intentions from the queue once the bank payment is instructed. Moves sweep from "queued" to "in flight."
 
-**FBO Bank Statement (T5604):** Confirm cash has left the Master FBO. DR Control (10102) / CR Settled (10100).
+**FBO Bank Statement:** Confirm cash has left the Master FBO. DR Control / CR Settled.
 
-**Sweep Bank Statement (T5605):** Confirm cash has arrived at the Sweep Network. DR Settled (10200) / CR Control (10202).
+**Sweep Bank Statement:** Confirm cash has arrived at the Sweep Network. DR Settled / CR Control.
 
 ### Phase 3: FBO-Side Reconciliation
 
 Three-stage pattern mirrors the deposit reconciliation:
 
-1. **Clearing Flush (T5606):** DR Clearing Total (10101) / CR Suspense (10103)
-2. **Bank Payment Pairing (T5607):** DR Suspense (10103) / CR Control (10102)
-3. **Per-Customer Cash-in-Transit (T5608):** Move FDIC position from Master FBO to Cash in Transit
+1. **Clearing Flush:** DR Clearing Total / CR Suspense
+2. **Bank Payment Pairing:** DR Suspense / CR Control
+3. **Per-Customer Cash-in-Transit:** Move FDIC position from Master FBO to Cash in Transit
 
 ### Phase 4: Sweep-Side Reconciliation
 
 Mirrors the FBO pattern on the destination side:
 
-1. **Clearing Flush (T5609):** DR Clearing (10201) / CR Suspense (10203)
-2. **Bank Payment Pairing (T5610):** DR Control (10202) / CR Suspense (10203)
-3. **Per-Customer Final Position (T5611):** Move FDIC position from Cash in Transit to final Sweep Network position
+1. **Clearing Flush:** DR Clearing / CR Suspense
+2. **Bank Payment Pairing:** DR Control / CR Suspense
+3. **Per-Customer Final Position:** Move FDIC position from Cash in Transit to final Sweep Network position
 
 **Final state:** Sweep queue zeroes when payment is instructed. FBO and Sweep clearing each zero after reconciliation. Cash in Transit zeroes when both sides complete per-customer moves. FDIC positions reflect the physical fund locations.
 

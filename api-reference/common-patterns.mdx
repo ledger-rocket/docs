@@ -80,7 +80,7 @@ Example:
 
 ```bash
 curl -H "x-api-key: KEY" \
-  "https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts?limit=50&offset=100"
+  "https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/accounts?limit=50&offset=100"
 ```
 
 ## Filtering
@@ -97,10 +97,10 @@ List endpoints support rich filtering via query parameters. Common operators:
 ### Account Filtering Example
 
 ```bash
-# Get all HOUSE accounts with ASSET type on ledger 5001
+# Get all HOUSE accounts with ASSET type
 curl -H "x-api-key: KEY" \
-  "https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts?\
-entity_scope=HOUSE&account_type=ASSET&ledger_id=5001"
+  "https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/accounts?\
+entity_scope=HOUSE&account_type=ASSET"
 ```
 
 ### Entity Filtering Example
@@ -108,7 +108,7 @@ entity_scope=HOUSE&account_type=ASSET&ledger_id=5001"
 ```bash
 # Filter entities by external IDs
 curl -X POST -H "x-api-key: KEY" -H "Content-Type: application/json" \
-  "https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/entities/filter" \
+  "https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/entities/filter" \
   -d '{"entity_ids": ["019a...", "019b..."]}'
 ```
 
@@ -125,7 +125,7 @@ Several list endpoints support case-insensitive search:
 ```bash
 # Search accounts by name
 curl -H "x-api-key: KEY" \
-  "https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/5/accounts?search=consumer"
+  "https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/sites/1/accounts?search=consumer"
 ```
 
 ## Timestamps
@@ -167,9 +167,9 @@ The currency scale defines the minor unit exponent: USD=2, JPY=0, BTC=8.
 |-------|--------|---------|
 | `event_id` | UUIDv7 (time-ordered) | `019a5000-0000-7000-8000-000000000001` |
 | `account_id` | UUID | `0192b4f0-7abc-7def-8000-000000000001` |
-| `site_id` | positive integer | `5` |
-| `template_id` | u16 (1-65535) | `533` |
-| `ledger_id` | u32 | `5001` |
+| `site_id` | positive integer | `1` |
+| `template_id` | u16 (1-65535) | `100` |
+| `ledger_id` | u32 | `1001` |
 
 ## Health Checks
 

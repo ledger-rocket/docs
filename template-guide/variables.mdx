@@ -45,17 +45,17 @@ Variables can hold static values -- fixed account IDs or constants -- that do no
     {
         "name": "suspense_account",
         "value": "50050000-0000-4001-a000-000000000004",
-        "description": "Static: Suspense (10103) on house ledger."
+        "description": "Static: Suspense account on house ledger."
     },
     {
         "name": "cash_bal_suspense",
         "value": "50050000-0000-4002-a000-000000011903",
-        "description": "Static: Cash Balances - Suspense (11903) on allocation ledger."
+        "description": "Static: Cash Balances - Suspense on allocation ledger."
     }
 ]
 ```
 
-This example is from **template 5215** (`accountants_reconciliation_bank_payment`). The suspense accounts are always the same for this site, so they are hardcoded as static variables rather than passed on each event.
+This example is from a **bank payment reconciliation** template. The suspense accounts are always the same for this site, so they are hardcoded as static variables rather than passed on each event.
 
 ## Computed Variables
 
@@ -96,22 +96,22 @@ Leg fields reference variables by name. The type must match what the leg field e
 
 ## Real-World Examples
 
-### Template 5215: Static Account Variables
+### Bank Payment Reconciliation: Static Account Variables
 
 ```json
 {
-    "template_id": 5215,
-    "name": "accountants_reconciliation_bank_payment",
+    "template_id": 103,
+    "name": "bank_payment_reconciliation",
     "variables": [
         {
             "name": "suspense_account",
             "value": "50050000-0000-4001-a000-000000000004",
-            "description": "Static: Suspense (10103) on house ledger."
+            "description": "Static: Suspense account on house ledger."
         },
         {
             "name": "cash_bal_suspense",
             "value": "50050000-0000-4002-a000-000000011903",
-            "description": "Static: Cash Balances - Suspense (11903) on allocation ledger."
+            "description": "Static: Cash Balances - Suspense on allocation ledger."
         }
     ]
 }
