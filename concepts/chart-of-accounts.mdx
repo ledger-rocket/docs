@@ -1,0 +1,69 @@
+---
+title: "Chart of Accounts"
+description: "The chart of accounts defines the classification system for all accounts in a site. Each entry is an account code that describes what kind of account it is, how it behaves on financial statements, ..."
+---
+
+The **chart of accounts** defines the classification system for all accounts in a site. Each entry is an **account code** that describes what kind of account it is, how it behaves on financial statements, and what dimensions it occupies.
+
+## Account Code Types
+
+Every account code has a `type` that determines its normal balance direction:
+
+| Type | Normal Balance | Description |
+|------|---------------|-------------|
+| `ASSET` | Debit | Resources owned (cash, receivables) |
+| `LIABILITY` | Credit | Obligations owed (payables, deposits held) |
+| `EQUITY` | Credit | Owner's residual interest |
+| `REVENUE` | Credit | Income earned |
+| `EXPENSE` | Debit | Costs incurred |
+| `SUPPLEMENTAL` | Varies | Off-balance-sheet or memo accounts |
+
+## IFRS/FSLI Classification
+
+Each account code carries an `fsli_ifrs` attribute that maps it to a specific IFRS financial statement line item. The system derives an `fsli_group` from this classification for higher-level aggregation. This enables automated generation of IFRS-compliant financial statements directly from the ledger.
+
+## Dimensional Attributes
+
+Account codes define the four dimensions that all accounts of that code inherit:
+
+- `entity_scope`: HOUSE, CLIENT, or GROUP
+- `counterparty_type`: CLIENT, INTERCOMPANY, SCHEME, STATUTORY, EXTERNAL (optional)
+- `functional_domain`: OPERATIONAL, SETTLEMENT, TAX, CONTINGENT (optional)
+- `valuation_role`: PRIMARY, CONTRA, or OFF_BALANCE_SHEET
+
+See [Accounts](04-accounts.md) for a full description of each dimension.
+
+## Rollup Flags
+
+The `has_rollup` flag on an account code controls whether posting to any account with that code automatically generates a parallel rollup transfer. This provides account-code-level balance aggregation without manual journal entries.
+
+## Account Code Masks in Templates
+
+Templates can restrict which account codes are valid for each purpose using the `account_code_validations` field. Each validation specifies a `purpose` (matching the event's account map) and a `mask` -- a fixed-width digit pattern that valid account codes must match. A bare `"*"` matches any account code.
+
+For example, a mask of `1***` matches any 4-digit account code starting with `1` (typically assets). This ensures that events only reference accounts with the correct classification for each role in the template.
+
+## Creating an Account Code
+
+```bash
+curl -X POST https://ledger.dev.ledgerrocket.com/v2/ledger/api/v1/account-codes \
+  -H "x-api-key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "records": [
+      {
+        "code": 1001,
+        "type": "ASSET",
+        "name": "Cash and Cash Equivalents",
+        "description": "Operating cash accounts",
+        "entity_scope": "HOUSE",
+        "valuation_role": "PRIMARY",
+        "fsli_ifrs": "CASH_AND_CASH_EQUIVALENTS",
+        "has_rollup": true,
+        "site_id": 1
+      }
+    ]
+  }'
+```
+
+The `code` field is a numeric identifier (0-65535) unique within a site. The combination of type, dimensional attributes, and IFRS classification fully describes where the account appears in financial reporting.

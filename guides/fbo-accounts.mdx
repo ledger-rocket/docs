@@ -1,0 +1,121 @@
+---
+title: "FBO Account Management"
+description: "How LedgerRocket models For Benefit Of (FBO) accounts, tracks custodial ownership, and maintains FDIC insurance visibility across dual ledgers."
+---
+
+How LedgerRocket models For Benefit Of (FBO) accounts, tracks custodial ownership, and maintains FDIC insurance visibility across dual ledgers.
+
+## What Is an FBO Account?
+
+An FBO (For Benefit Of) account is a bank account held by one entity (the custodian) on behalf of another (the beneficial owner). In fintech, the platform operator opens an FBO account at a partner bank to hold customer funds. The bank sees one pooled account; LedgerRocket tracks individual customer positions within it.
+
+Key distinction:
+
+- **Custodian** -- the bank that holds the physical cash
+- **Beneficial owner** -- the customer whose money it is
+
+Every account in LedgerRocket carries both an `entity_id` (beneficial owner) and a `custodian_entity_id` (custodian), making the ownership chain explicit.
+
+## Dual-Ledger Pattern
+
+LedgerRocket uses two ledgers to track FBO funds:
+
+### Economic Ledger (Operational)
+
+The on-balance-sheet ledger where business transactions post. Tracks what customers owe and are owed.
+
+- Account codes: 10xxx (house assets), 20xxx (customer liabilities)
+- Example: Customer Available (20100), Customer Hold (20101)
+
+### Allocation Ledger (FDIC Tracking)
+
+A parallel ledger that tracks the physical location of funds across bank institutions. Required for FDIC insurance pass-through compliance.
+
+- Account codes: 11xxx (cash balance assets), 21xxx (customer FDIC positions)
+- Example: Cash Balances FBO (11900), Consumer FBO Main (21100)
+
+Both ledgers belong to the same entity and currency. Templates fire legs on both ledgers atomically -- every event that moves money on the economic ledger also updates the allocation ledger.
+
+## Account Code Structure
+
+### Economic Ledger (10xxx / 20xxx)
+
+| Code | Name | Type | Purpose |
+|------|------|------|---------|
+| 10100 | Settled | ASSET | Confirmed physical cash at FBO bank |
+| 10101 | Clearing Total | ASSET | Expected cash from allocation files |
+| 10102 | Control | ASSET | Per-file bank statement staging |
+| 10103 | Suspense | ASSET | Temporary reconciliation parking |
+| 10104 | Per-file Clearing | ASSET | Loading checksum per allocation/ACH file |
+| 20100 | Customer Available | LIABILITY | Spendable customer balance |
+| 20101 | Customer Hold | LIABILITY | Reserved pending confirmation |
+| 20102 | Pending Disbursements | LIABILITY | Queued for ACH payout |
+| 20900 | Unallocated Customer | LIABILITY | Deposits not yet matched |
+
+### Allocation Ledger (11xxx / 21xxx)
+
+| Code | Name | Type | Purpose |
+|------|------|------|---------|
+| 11900 | Cash Balances FBO | ASSET | FDIC fund location at Master FBO bank |
+| 11901 | Cash Balances Clearing | ASSET | Expected fund movements (FDIC tracking) |
+| 11902 | Cash Balances Control | ASSET | Bank statement staging (FDIC tracking) |
+| 11903 | Cash Balances Suspense | ASSET | Reconciliation parking (FDIC tracking) |
+| 21100 | Consumer FBO Main | LIABILITY | Customer FDIC position at FBO bank |
+| 21101 | Consumer FBO Clearing | LIABILITY | Customer clearing position (FDIC) |
+| 21102 | Consumer FBO Pending | LIABILITY | Customer pending disbursement (FDIC) |
+| 21900 | Unallocated Customer FBO | LIABILITY | Unmatched deposits (FDIC) |
+
+## How Sweeps Move Funds Between Rails
+
+When FBO balances exceed FDIC insurance limits, sweeps move funds to additional bank partners (the "Sweep Network"). Each destination bank is a separate rail.
+
+The sweep lifecycle:
+
+1. **Aggregate** (T5601) -- create clearing positions on source and destination rails
+2. **Customer allocation** (T5602) -- per-customer expected movements on the FDIC tracking ledger
+3. **Payment initiated** (T5603) -- clear sweep intentions once payment is instructed
+4. **Bank statements** (T5604/T5605) -- confirm cash left the FBO and arrived at the sweep bank
+5. **Reconciliation** (T5606-T5611) -- flush clearing/control through suspense on both sides
+
+After reconciliation, the allocation ledger reflects the new physical fund locations:
+
+```text
+Before sweep:
+  Customer A: $250,000 at Master FBO
+
+After sweep:
+  Customer A: $150,000 at Master FBO
+  Customer A: $100,000 at Sweep Bank 1
+```
+
+## FDIC Insurance Tracking
+
+The allocation ledger exists specifically to answer: "At which bank is each customer's money physically located?" This is required for FDIC pass-through insurance, where each customer is insured up to $250,000 per bank.
+
+Querying FDIC positions:
+
+```bash
+# Get a customer's FDIC position at the FBO bank
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/accounts/CUSTOMER_FBO_MAIN_UUID/balance?site_id=5" \
+  -H "x-api-key: lr-test-20250701" | jq .
+
+# Get aggregate FDIC position by account code across all customers
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/account-codes/21100/balance?site_id=5" \
+  -H "x-api-key: lr-test-20250701" | jq .
+```
+
+## Verifying Dual-Ledger Consistency
+
+The economic ledger and allocation ledger must agree. Total customer liabilities on the economic ledger (sum of 20xxx) should equal total customer positions on the allocation ledger (sum of 21xxx).
+
+```bash
+# Economic ledger: total customer liabilities
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/account-codes/20100/balance?site_id=5" \
+  -H "x-api-key: lr-test-20250701" | jq '.credits_posted, .debits_posted'
+
+# Allocation ledger: total FDIC positions
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/account-codes/21100/balance?site_id=5" \
+  -H "x-api-key: lr-test-20250701" | jq '.credits_posted, .debits_posted'
+```
+
+Any discrepancy between these two totals indicates a template configuration issue or an incomplete workflow and should be investigated immediately.

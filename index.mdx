@@ -1,97 +1,47 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "LedgerRocket Documentation"
+description: "Double-entry bookkeeping platform for financial applications"
 ---
 
-## Setting up
+## Welcome to LedgerRocket
 
-Get your documentation site up and running in minutes.
+LedgerRocket is a programmable double-entry bookkeeping platform that transforms financial events into balanced transfers using template-driven business logic.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Platform Overview" icon="rocket" href="/getting-started/platform-overview">
+    What LedgerRocket is and what it can do
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Quickstart" icon="play" href="/getting-started/quickstart">
+    Create your first ledger entry in minutes
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Core Concepts" icon="book" href="/concepts/multi-tenancy">
+    Sites, entities, ledgers, accounts, events, templates
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Template Guide" icon="code" href="/template-guide/template-structure">
+    Author JSON+CEL templates for financial transactions
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Key Capabilities
 
-Everything you need to create world-class documentation.
+- **Multi-tenant isolation** — each site is a fully independent tenant boundary
+- **Dimensional account model** — accounts classified by EntityScope, CounterpartyType, FunctionalDomain, and ValuationRole
+- **Template-driven processing** — JSON templates with CEL expressions define how events become transfers
+- **Maker-checker governance** — templates go through DRAFT → PENDING_APPROVAL → LIVE → DEPRECATED lifecycle
+- **Real-time balances** — TigerBeetle-backed balance queries with sub-millisecond latency
+- **Atomic event processing** — events produce balanced double-entry transfers or fail entirely
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Architecture
 
-## Need inspiration?
+LedgerRocket consists of four microservices:
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
+| Service | Role |
+|---------|------|
+| **Ledger Service** | Reference data authority — sites, entities, ledgers, accounts, account codes |
+| **Accounting Rule Engine** | Template lifecycle — authoring, validation, maker-checker approval |
+| **Event Service** | Atomic event processing — validates events, evaluates templates, creates transfers |
+| **Balance Service** | Balance queries — real-time (TigerBeetle), historical (Athena), chain analysis |
+
+<Card title="API Reference" icon="square-terminal" href="https://docs.ledgerrocket.com">
+  Interactive API documentation powered by Scalar
 </Card>

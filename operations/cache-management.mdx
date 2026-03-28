@@ -1,0 +1,143 @@
+---
+title: "Cache Management"
+description: "How the LedgerRocket caching layers work and how to manage them operationally."
+---
+
+How the LedgerRocket caching layers work and how to manage them operationally.
+
+## Cache Architecture
+
+The Event Service maintains two in-memory caches that store reference data fetched from the Ledger Service. These caches eliminate per-event HTTP calls and keep processing latency low.
+
+### Platform Cache
+
+Stores site-wide reference data shared across all customers:
+
+| Data | Source | Refresh |
+|------|--------|---------|
+| Ledgers | Ledger Service | On startup, periodic refresh |
+| Entities | Ledger Service | On startup, periodic refresh |
+| Currencies | Ledger Service | On startup, periodic refresh |
+| Account codes | Ledger Service | On startup, periodic refresh |
+| Countries | Ledger Service | On startup, periodic refresh |
+
+The platform cache is small and changes infrequently. It is fully loaded at startup.
+
+### Customer Cache
+
+Stores customer-specific data that may be large and changes as new customers onboard:
+
+| Data | Source | Refresh |
+|------|--------|---------|
+| Accounts | Ledger Service | On-demand (cache miss triggers fetch) |
+| Customer entities | Ledger Service | On-demand (cache miss triggers fetch) |
+
+The customer cache uses an LRU eviction policy with a configurable memory limit. When the cache reaches its limit, the least recently used entries are evicted.
+
+### Template Cache
+
+Templates are loaded from S3 (the template store) at startup and held in memory. They are compiled into executable form (CEL expressions, JSON Schema validators) and reused for every event.
+
+## Template Cache Refresh
+
+After updating templates in the Ledger Service, trigger a cache refresh so the Event Service picks up the changes:
+
+```bash
+curl -s -X POST "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/5/templates:refresh-cache" \
+  -H "x-api-key: lr-test-20250701" | jq .
+```
+
+This reloads all templates from S3 for the specified site. The operation is synchronous -- when it returns, all templates are refreshed.
+
+## Template Loader Status
+
+Check which templates are loaded and when they were last refreshed:
+
+```bash
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/5/templates:status" \
+  -H "x-api-key: lr-test-20250701" | jq .
+```
+
+The response includes:
+
+- Number of loaded templates
+- Last reload timestamp
+- Any templates that failed to load (compilation errors, schema issues)
+
+## Listing Loaded Templates
+
+View the full list of templates available for a site:
+
+```bash
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/5/templates" \
+  -H "x-api-key: lr-test-20250701" | jq '.[].template_id'
+```
+
+To inspect a specific template:
+
+```bash
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/api/v1/sites/5/templates/5104" \
+  -H "x-api-key: lr-test-20250701" | jq .
+```
+
+## Balance Service Cache
+
+The Balance Service caches immutable historical balance data. Current (latest) balances are always fetched live from TigerBeetle.
+
+### Cache Statistics
+
+```bash
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/cache/stats" \
+  -H "x-api-key: lr-test-20250701" | jq .
+```
+
+Key metrics in the response:
+
+| Metric | Meaning |
+|--------|---------|
+| `hits` | Number of cache hits (served from memory) |
+| `misses` | Number of cache misses (fetched from TigerBeetle) |
+| `hit_rate` | Percentage of requests served from cache |
+| `entries` | Number of cached balance snapshots |
+| `size_bytes` | Memory used by the cache |
+
+A healthy hit rate depends on query patterns. Historical balance queries (specific timestamps) should have high hit rates because those values never change. Current balance queries always miss the cache by design.
+
+## Monitoring Cache Health
+
+### Event Service Readiness Check
+
+The `/readyz` endpoint includes cache status in its checks:
+
+```bash
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/readyz" \
+  -H "x-api-key: lr-test-20250701" | jq '.checks | {customer_cache, platform_cache, template_store}'
+```
+
+### Warning Signs
+
+| Symptom | Possible Cause | Action |
+|---------|---------------|--------|
+| Customer cache near memory limit | High customer count or large account sets | Increase cache limit or review eviction policy |
+| Platform cache counts drop to zero | Ledger Service connectivity failure | Check Ledger Service health and network |
+| Failed templates non-empty | Template compilation error | Check template syntax, refresh cache after fix |
+| Balance cache hit rate < 50% | Cache too small or pattern change | Increase cache size |
+
+## Operational Procedures
+
+### After Deploying New Templates
+
+1. Deploy templates to S3 via the Ledger Service
+2. Trigger cache refresh: `POST /api/v1/sites/{site_id}/templates:refresh-cache`
+3. Verify status: `GET /api/v1/sites/{site_id}/templates:status`
+4. Confirm no failed templates in `/readyz`
+
+### After Adding New Account Codes or Ledgers
+
+Platform cache refreshes periodically. To force an immediate refresh, restart the Event Service instance. The customer cache will repopulate on demand as events arrive.
+
+### Investigating Slow Event Processing
+
+1. Check customer cache size -- if near the limit, eviction churn slows processing
+2. Check template store status -- a failed template forces a per-event error path
+3. Check Balance Service cache stats -- low hit rates increase TigerBeetle load

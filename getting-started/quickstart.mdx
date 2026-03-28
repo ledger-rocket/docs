@@ -1,0 +1,422 @@
+---
+title: "Quickstart"
+description: "This guide walks through the core workflow: creating reference data, defining an accounting template, submitting a financial event, and querying the results. All examples use curl against the dev e..."
+---
+
+This guide walks through the core workflow: creating reference data, defining an accounting template, submitting a financial event, and querying the results. All examples use `curl` against the dev environment.
+
+## Prerequisites
+
+- An API key (see [Authentication](03-authentication.md))
+- `curl` and `jq` installed
+
+## Base URLs
+
+```text
+Ledger Service:  https://ledger.dev.ledgerrocket.com/v2/ledger
+Event Service:   https://ledger.dev.ledgerrocket.com/v2/event-service
+Balance Service: https://ledger.dev.ledgerrocket.com/v2/balance-service
+```
+
+Set up shell variables for convenience:
+
+```bash
+LEDGER_URL="https://ledger.dev.ledgerrocket.com/v2/ledger"
+EVENT_URL="https://ledger.dev.ledgerrocket.com/v2/event-service"
+BALANCE_URL="https://ledger.dev.ledgerrocket.com/v2/balance-service"
+API_KEY="your-api-key-here"
+```
+
+## Step 1: Create a Site
+
+A site is the top-level tenant boundary. All data is isolated within a site.
+
+```bash
+curl -s -X POST "$LEDGER_URL/api/v1/sites" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{
+    "name": "Acme Payments",
+    "description": "Production site for Acme"
+  }' | jq .
+```
+
+Expected response:
+
+```json
+{
+  "site_id": 1,
+  "name": "Acme Payments",
+  "description": "Production site for Acme",
+  "created_at": 1711612800000
+}
+```
+
+Save the `site_id` for subsequent requests:
+
+```bash
+SITE_ID=1
+```
+
+## Step 2: Create Entities
+
+Entities represent real-world actors -- companies, individuals, or custodians. Create a company entity (the platform operator) and a customer entity.
+
+```bash
+# Create the platform company entity
+curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/entities" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{
+    "name": "Acme Payments Inc.",
+    "entity_type": "company",
+    "kyc_status": "verified"
+  }' | jq .
+```
+
+```json
+{
+  "entity_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "Acme Payments Inc.",
+  "entity_type": "company",
+  "kyc_status": "verified",
+  "created_at": 1711612800000
+}
+```
+
+```bash
+# Create a customer entity
+curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/entities" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{
+    "name": "Jane Smith",
+    "entity_type": "individual",
+    "kyc_status": "verified"
+  }' | jq .
+```
+
+```bash
+COMPANY_ENTITY_ID="a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+CUSTOMER_ENTITY_ID="b2c3d4e5-f6a7-8901-bcde-f12345678901"
+```
+
+## Step 3: Create Account Codes
+
+Account codes define your chart of accounts. Create asset and liability codes.
+
+```bash
+# Asset account code (for customer wallets)
+curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/account-codes" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{
+    "code": "1001",
+    "name": "Customer Wallet",
+    "account_type": "ASSET",
+    "has_rollup": true
+  }' | jq .
+
+# Liability account code (for funds owed)
+curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/account-codes" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{
+    "code": "2001",
+    "name": "Customer Liability",
+    "account_type": "LIABILITY",
+    "has_rollup": false
+  }' | jq .
+```
+
+## Step 4: Create a Ledger
+
+A ledger is scoped to one entity and one currency. All accounts and transfers within a ledger share that scope.
+
+```bash
+curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/ledgers" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{
+    "entity_id": "'"$COMPANY_ENTITY_ID"'",
+    "currency_code": "USD"
+  }' | jq .
+```
+
+```json
+{
+  "ledger_id": 100,
+  "entity_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "currency_code": "USD",
+  "created_at": 1711612800000
+}
+```
+
+```bash
+LEDGER_ID=100
+```
+
+## Step 5: Create Accounts
+
+Create two accounts on the ledger: a sender account and a receiver account. Accounts carry dimensional attributes and reference an account code.
+
+```bash
+# Sender account (asset)
+curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/accounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{
+    "ledger_id": '"$LEDGER_ID"',
+    "entity_id": "'"$COMPANY_ENTITY_ID"'",
+    "custodian_entity_id": "'"$COMPANY_ENTITY_ID"'",
+    "account_code": "1001",
+    "name": "Acme Operating Account"
+  }' | jq .
+```
+
+```json
+{
+  "account_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "ledger_id": 100,
+  "account_code": "1001",
+  "name": "Acme Operating Account",
+  "created_at": 1711612800000
+}
+```
+
+```bash
+# Receiver account (liability)
+curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/accounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{
+    "ledger_id": '"$LEDGER_ID"',
+    "entity_id": "'"$CUSTOMER_ENTITY_ID"'",
+    "custodian_entity_id": "'"$COMPANY_ENTITY_ID"'",
+    "account_code": "2001",
+    "name": "Jane Smith Wallet"
+  }' | jq .
+```
+
+```bash
+SENDER_ACCOUNT_ID="7c9e6679-7425-40de-944b-e07fc1f90ae7"
+RECEIVER_ACCOUNT_ID="2c1a8f2e-3b47-4d28-9f4d-8b6f2d9a0c11"
+```
+
+## Step 6: Define a Template
+
+Templates define how business events produce double-entry transfers. This simple payment template takes an amount from a sender and credits a receiver.
+
+Templates are managed through the Accounting Rule Engine and must go through a lifecycle (DRAFT -> PENDING_APPROVAL -> LIVE) before they can be used. Once a template is LIVE, it can process events.
+
+A template consists of:
+
+- **Variables** -- CEL expressions that compute values from the event
+- **Validations** -- CEL predicates that must pass before processing
+- **Legs** -- the debit/credit entries to create
+
+```json
+{
+  "template_id": 532,
+  "name": "simple_payment",
+  "description": "Simple payment from sender to receiver",
+  "variables": [
+    {
+      "name": "payment_amount",
+      "expression": "event.amount",
+      "expression_type": "integer"
+    }
+  ],
+  "validations": [
+    {
+      "expression": "event.amount > 0",
+      "message": "Payment amount must be positive"
+    }
+  ],
+  "legs": [
+    {
+      "debit_account": "sender",
+      "credit_account": "receiver",
+      "amount": "payment_amount",
+      "description": "Payment transfer"
+    }
+  ],
+  "metadata_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "reference": { "type": "string" }
+    }
+  },
+  "audit_state": "LIVE"
+}
+```
+
+Verify the template is accessible:
+
+```bash
+curl -s "$EVENT_URL/api/v1/sites/$SITE_ID/templates/532" \
+  -H "x-api-key: $API_KEY" | jq .
+```
+
+## Step 7: Submit an Event
+
+Submit a financial event that references your template and accounts. The Event Service resolves accounts, evaluates the template, and atomically writes the resulting transfers to TigerBeetle.
+
+The `event_id` must be a UUIDv7 (time-ordered). It also serves as the idempotency key -- safe to retry on failure.
+
+```bash
+EVENT_ID=$(uuidgen)  # Use a UUIDv7 generator in production
+
+curl -s -X POST "$EVENT_URL/api/v1/events" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{
+    "event_id": "'"$EVENT_ID"'",
+    "site_id": '"$SITE_ID"',
+    "occurred_at": 1711612800000,
+    "template_ids": [532],
+    "amount": 150000,
+    "event_source": "quickstart",
+    "accounts": [
+      {
+        "account_id": "'"$SENDER_ACCOUNT_ID"'",
+        "purpose": "sender"
+      },
+      {
+        "account_id": "'"$RECEIVER_ACCOUNT_ID"'",
+        "purpose": "receiver"
+      }
+    ],
+    "extra_metadata": {
+      "reference": "INV-2026-001"
+    }
+  }' | jq .
+```
+
+Expected response (HTTP 201):
+
+```json
+{
+  "event_id": "01956a3b-c4d5-7e6f-8901-234567890abc",
+  "site_id": 1,
+  "status": "committed",
+  "transfer_count": 1,
+  "occurred_at": 1711612800000
+}
+```
+
+The `amount` of `150000` represents $1,500.00 (USD has scale 2, so amounts are in cents).
+
+## Step 8: Query Transfers
+
+Retrieve the transfers generated by the event:
+
+```bash
+curl -s "$EVENT_URL/api/v1/events/$EVENT_ID/transfers" \
+  -H "x-api-key: $API_KEY" | jq .
+```
+
+Expected response:
+
+```json
+{
+  "transfers": [
+    {
+      "id": "d4e5f6a7-b8c9-0123-4567-890abcdef012",
+      "event_id": "01956a3b-c4d5-7e6f-8901-234567890abc",
+      "debit_account_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "credit_account_id": "2c1a8f2e-3b47-4d28-9f4d-8b6f2d9a0c11",
+      "amount": 150000,
+      "ledger_id": 100,
+      "template_id": 532
+    }
+  ]
+}
+```
+
+For enriched transfers with resolved account names and entity details:
+
+```bash
+curl -s "$EVENT_URL/api/v1/events/$EVENT_ID/transfers/enriched" \
+  -H "x-api-key: $API_KEY" | jq .
+```
+
+## Step 9: Check Account Balances
+
+Query the balance for each account:
+
+```bash
+# Sender account balance
+curl -s "$BALANCE_URL/api/v1/accounts/$SENDER_ACCOUNT_ID/balance" \
+  -H "x-api-key: $API_KEY" | jq .
+```
+
+```json
+{
+  "account_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "debits_posted": "150000",
+  "credits_posted": "0",
+  "timestamp": 1711612800000000000
+}
+```
+
+```bash
+# Receiver account balance
+curl -s "$BALANCE_URL/api/v1/accounts/$RECEIVER_ACCOUNT_ID/balance" \
+  -H "x-api-key: $API_KEY" | jq .
+```
+
+```json
+{
+  "account_id": "2c1a8f2e-3b47-4d28-9f4d-8b6f2d9a0c11",
+  "debits_posted": "0",
+  "credits_posted": "150000",
+  "timestamp": 1711612800000000000
+}
+```
+
+Note that amounts in balance responses are string-encoded integers in minor units. For USD (scale 2), `"150000"` represents $1,500.00.
+
+## Validate Before Submitting
+
+Use the dry-run endpoint to validate an event without committing transfers:
+
+```bash
+curl -s -X POST "$EVENT_URL/api/v1/events:validate" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{
+    "site_id": '"$SITE_ID"',
+    "template_ids": [532],
+    "amount": 150000,
+    "accounts": [
+      {
+        "account_id": "'"$SENDER_ACCOUNT_ID"'",
+        "purpose": "sender"
+      },
+      {
+        "account_id": "'"$RECEIVER_ACCOUNT_ID"'",
+        "purpose": "receiver"
+      }
+    ],
+    "extra_metadata": {
+      "reference": "INV-2026-002"
+    }
+  }' | jq .
+```
+
+For a detailed execution trace showing variable evaluation and leg resolution:
+
+```bash
+curl -s -X POST "$EVENT_URL/api/v1/events:validate:explain" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{ ... same body ... }' | jq .
+```
+
+## Next Steps
+
+- [Authentication](03-authentication.md) -- API key management and security
+- [Architecture](04-architecture.md) -- how the services fit together
+- [Template Guide](../template-guide/) -- writing accounting templates with CEL expressions

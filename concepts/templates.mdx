@@ -1,0 +1,69 @@
+---
+title: "Templates"
+description: "A template is a declarative configuration that defines how a type of financial event produces double-entry transfers. Templates are the core business logic layer of the Event Service."
+---
+
+A **template** is a declarative configuration that defines how a type of financial event produces double-entry transfers. Templates are the core business logic layer of the Event Service.
+
+## Overview of Template-Driven Processing
+
+Instead of writing imperative code for each transaction type, you define templates that declare:
+
+- What accounts are involved and what codes they must have
+- What calculations to perform on the event amount
+- What validations must pass
+- What transfer legs to generate
+
+When an event arrives with `template_ids: [532]`, the Event Service loads template 532, validates the event against it, evaluates its logic, and produces the resulting transfers.
+
+## Template Structure
+
+| Section | Purpose |
+|---------|---------|
+| `variables` | CEL expressions evaluated sequentially. Each can reference the event and previous variables. Integer arithmetic only. |
+| `validations` | CEL predicates that must all return true. Rejections include a human-readable error message. |
+| `account_code_validations` | Mask patterns constraining which account codes are valid for each purpose. |
+| `legs` | Transfer definitions specifying debit account, credit account, and amount (referencing variables). |
+| `metadata_schema` | JSON Schema (2020-12) validating the event's `extra_metadata` field. |
+| `accounting_treatments` | Policy references and descriptions for audit compliance. |
+| `financial_statements_impact` | Declares the net accounting impact by account type. |
+
+## CEL Expressions for Business Logic
+
+Variables and validations use [CEL (Common Expression Language)](https://github.com/google/cel-spec) expressions. Variables are evaluated in order and can reference:
+
+- `event.amount` -- the event's amount in minor units
+- `event.extra_metadata.*` -- fields from the event's metadata
+- Previously defined variables by name
+
+All monetary arithmetic uses integers. There are no floating-point operations.
+
+## Template Lifecycle
+
+Templates follow a maker-checker approval workflow:
+
+```text
+DRAFT -> PENDING_APPROVAL -> LIVE -> DEPRECATED
+                          \-> REJECTED
+```
+
+- **DRAFT**: Template is being authored. Cannot process events.
+- **PENDING_APPROVAL**: Submitted for review. Cannot process events.
+- **LIVE**: Approved and active. Events can reference this template.
+- **DEPRECATED**: Retired. New events cannot use it, but historical data is preserved.
+- **REJECTED**: Review denied. Returns to draft-like state for revision.
+
+Only templates in the `LIVE` state are loaded into the Event Service cache and available for event processing.
+
+## How Templates Map Events to Transfers
+
+1. The event provides an `amount`, an `accounts` map, and optional `extra_metadata`.
+2. The template's `variables` section computes derived values (fees, taxes, net amounts).
+3. The template's `validations` section checks business rules.
+4. Each `leg` produces one transfer, referencing accounts by purpose and amounts by variable name.
+
+A single event processed by one template might produce multiple transfer legs (e.g., a principal leg, a fee leg, and a tax leg).
+
+## Further Reading
+
+For detailed guidance on writing templates, including CEL expression patterns, variable ordering, and testing strategies, see the Template Authoring Guide.

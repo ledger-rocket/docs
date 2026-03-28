@@ -1,0 +1,147 @@
+---
+title: "Template Structure"
+description: "Templates are the core configuration objects in LedgerRocket. Each template declares how a specific type of financial event produces double-entry ledger transfers. Templates are declarative JSON do..."
+---
+
+Templates are the core configuration objects in LedgerRocket. Each template declares how a specific type of financial event produces double-entry ledger transfers. Templates are declarative JSON documents -- they contain no imperative code.
+
+## Top-Level JSON Structure
+
+```json
+{
+  "$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json",
+  "site_id": 5,
+  "template_id": 5403,
+  "name": "suspense_resolve_bank_fee",
+  "description": "Manually resolve an investigated orphaned Suspense balance...",
+  "category": "RECONCILIATION",
+  "product": "SUSPENSE_MANAGEMENT",
+  "event_type": "SUSPENSE_ALLOCATION",
+  "trigger": "Operations analyst approves clearing an aged orphaned Suspense balance...",
+  "capabilities": [],
+  "ledger_scope_descriptions": {
+    "economic": "Economic on-balance-sheet ledger (Economic Ledger 5001)..."
+  },
+  "financial_statements_impact": [...],
+  "accounting_treatments": [...],
+  "account_code_validations": [...],
+  "metadata_schema": {...},
+  "variables": [...],
+  "validations": [...],
+  "legs": [...],
+  "examples": [...]
+}
+```
+
+## Required Fields
+
+Every template must include these fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `$schema` | string | URL of the JSON schema that defines this template payload. Use `https://ledger-rocket.github.io/schemas/domain/template.schema.json`. |
+| `site_id` | integer | Tenant identifier. All data is isolated by site. Range: 1--2147483647. |
+| `template_id` | integer | Unique template identifier within the site. Range: 1--65535 (u16). |
+| `name` | string | Machine-readable name in `lower_snake_case`. Max 200 characters. |
+| `description` | string | Human-readable explanation of what this template does and when it fires. Max 2000 characters. |
+| `category` | string | Business category in `UPPER_SNAKE_CASE` (e.g., `RECONCILIATION`, `DISBURSEMENTS`, `SWEEP`). Max 50 characters. |
+| `product` | string | Product category in `UPPER_SNAKE_CASE` (e.g., `DEPOSITS`, `FDIC_SWEEP`, `SUSPENSE_MANAGEMENT`). Max 50 characters. |
+| `event_type` | string | Type of event this template processes in `UPPER_SNAKE_CASE` (e.g., `TRANSFER`, `SUSPENSE_ALLOCATION`). Max 50 characters. |
+| `trigger` | string | Human-readable description of the business event that triggers this template. Max 500 characters. |
+| `accounting_treatments` | array | At least one accounting treatment classification. See [Accounting Treatments](07-accounting-treatments.md). |
+| `account_code_validations` | array | Account code masks keyed by purpose. Defines which accounts the template expects and validates their codes. |
+| `metadata_schema` | object | JSON Schema (2020-12) for validating the event's `extra_metadata` field. See [Metadata Schemas](06-metadata-schemas.md). |
+| `variables` | array | CEL expressions evaluated sequentially. May be empty `[]`. See [Variables](03-variables.md). |
+| `validations` | array | CEL predicates that must all pass. May be empty `[]`. See [Validations](04-validations.md). |
+| `legs` | array | Transfer leg definitions (1--64 legs). At least one required. See [Legs](05-legs.md). |
+| `financial_statements_impact` | array | Net accounting impact on financial statements by account type and ledger scope. Max 5 entries. |
+
+## Optional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `capabilities` | array of strings | Feature flags that toggle optional behaviors: `allows_intercompany_transfers`, `skip_account_type_validation`, `skip_financial_statements_impact_validation`. |
+| `ledger_scope_descriptions` | object | Map of ledger scope identifiers to human-readable descriptions. Keys must be `lower_snake_case`. |
+| `examples` | array | Test scenarios with sample event requests and expected transfers. Used for validation and documentation. |
+
+## How Variables, Validations, and Legs Relate
+
+The three core arrays form a processing pipeline that executes in order:
+
+```text
+Event arrives
+    |
+    v
+1. Variables    -- Compute intermediate values from event fields
+    |               (amount splits, fee calculations, derived flags)
+    v
+2. Validations  -- Assert business rules using event fields and variables
+    |               (all must pass, or the event is rejected)
+    v
+3. Legs         -- Generate transfers using event fields and variables
+                    (each leg produces one debit/credit transfer)
+```
+
+**Variables** are evaluated first, in declaration order. Each variable can reference `event.amount`, `event.extra_metadata.*`, `accounts.{purpose}.*`, and any previously-declared variable by name.
+
+**Validations** run next. Each validation is a CEL expression that must evaluate to `true`. If any validation fails, the event is rejected with the validation's error description. Validations can reference the same fields as variables, plus the variable names themselves.
+
+**Legs** run last. Each leg produces one double-entry transfer. Leg fields (`amount`, `debit_account`, `credit_account`) reference either a variable name or a direct selector like `event.amount` or `accounts.{purpose}.account_id`. Legs do not contain CEL expressions -- they are pure references.
+
+## The $schema Field
+
+The `$schema` field identifies the JSON schema version for the template. Use:
+
+```json
+"$schema": "https://ledger-rocket.github.io/schemas/domain/template.schema.json"
+```
+
+This enables schema validation in editors and CI pipelines.
+
+## Account Code Validations
+
+The `account_code_validations` array defines which accounts the template expects and constrains their chart-of-accounts codes. Each entry maps a **purpose** (a logical role in the template) to an account code mask.
+
+```json
+"account_code_validations": [
+    {
+        "purpose": "bank_fees_account",
+        "mask": "50100",
+        "description": "Bank Fees expense (partner bank service charges)."
+    },
+    {
+        "purpose": "suspense_account",
+        "mask": "10103",
+        "description": "Reconciliation suspense / mixing bowl asset account."
+    }
+]
+```
+
+The `mask` field is a fixed-width digit pattern. The value `"50100"` means the account code must be exactly `50100`. The pipe character `|` separates alternatives: `"10102|10103"` accepts either code. A bare `"*"` matches any code.
+
+These purposes are then referenced in legs as `accounts.{purpose}.account_id` and in validations as `accounts.{purpose}.account_code.code`.
+
+## Financial Statements Impact
+
+Each entry describes the net effect on one account type within a ledger scope:
+
+```json
+"financial_statements_impact": [
+    {
+        "account_type": "EXPENSE",
+        "impact": "increase",
+        "ledger_scope": "economic",
+        "description": "Bank service charge recognized: bank fees expense increases."
+    },
+    {
+        "account_type": "ASSET",
+        "impact": "decrease_or_no_impact",
+        "ledger_scope": "economic",
+        "description": "Suspense asset is credited to clear the orphaned balance."
+    }
+]
+```
+
+Valid `account_type` values: `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE`, `SUPPLEMENTAL`.
+
+Valid `impact` values: `increase`, `decrease`, `increase_or_no_impact`, `decrease_or_no_impact`.
