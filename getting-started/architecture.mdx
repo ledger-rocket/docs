@@ -1,0 +1,252 @@
+---
+title: "Architecture"
+description: "How LedgerRocket's four core services connect, the data flow for event processing and balance queries, and API conventions."
+---
+
+## Service Map
+
+LedgerRocket is composed of four core services, each with a single responsibility. All services are stateless and communicate over HTTP REST APIs.
+
+```text
+                         +---------------------+
+                         |    Ledger Service    |
+                         |      (Python)        |
+                         | reference data:      |
+                         | sites, entities,     |
+                         | ledgers, accounts,   |
+                         | account codes,       |
+                         | currencies           |
+                         +----------+----------+
+                                    ^
+                                    | resolve accounts,
+                                    | ledgers, entities
+                                    |
+Client ---POST /events--->  Event Service (Go)  ---atomic write--->  TigerBeetle
+                              |         |                            (transfers &
+                              |         |                             balances)
+                              |         v                                ^
+                              |   Accounting Rule                        |
+                              |   Engine                                 |
+                              |   (template definitions)                 |
+                              |                                          |
+                              |                              Balance Service (Go)
+                              |                              (balance queries
+                              +--- event store (S3) --->      + cache)
+```
+
+### Service Responsibilities
+
+| Service | Language | Port | Responsibility |
+|---------|----------|------|----------------|
+| **Ledger Service** | Python | 8000 | Reference data authority. Manages sites, entities, ledgers, accounts, account codes, currencies, and countries. Source of truth for all organizational and chart-of-accounts data. |
+| **Event Service** | Go | 8080 | Event processing engine. Accepts financial events, resolves accounts via the Ledger Service, evaluates templates, produces double-entry transfers, and commits them atomically to TigerBeetle. Also serves transfer queries. |
+| **Balance Service** | Go | 8081 | Balance queries. Provides real-time and historical balance lookups against TigerBeetle. Caches immutable historical data for performance. |
+| **Accounting Rule Engine** | -- | -- | Template management. Handles the lifecycle of accounting templates (DRAFT, PENDING_APPROVAL, LIVE, DEPRECATED) used by the Event Service. |
+
+## Data Flow
+
+### Event Submission (Write Path)
+
+When a client submits a financial event, the following sequence occurs:
+
+```text
+1. Client sends POST /api/v1/events
+   |
+2. Event Service validates the request structure
+   |
+3. Event Service resolves accounts via Ledger Service
+   |  - Fetches account details (ledger, entity, account code)
+   |  - Validates all accounts exist and belong to the same ledger
+   |
+4. Event Service loads templates from cache (or Accounting Rule Engine)
+   |
+5. Template engine evaluates:
+   |  a. Variables (CEL expressions, integer arithmetic only)
+   |  b. Validations (CEL predicates, all must pass)
+   |  c. Legs (produces debit/credit transfer pairs)
+   |
+6. Event is prepared in the outbox (durable, crash-safe)
+   |
+7. Transfers are written atomically to TigerBeetle
+   |  - All-or-nothing: either every transfer commits or none do
+   |  - Idempotent: duplicate event_ids are safely rejected
+   |
+8. Outbox record is marked committed
+   |
+9. Event envelope is published to the event store
+   |
+10. Client receives HTTP 201 with event confirmation
+```
+
+### Balance Query (Read Path)
+
+```text
+1. Client sends GET /api/v1/accounts/{id}/balance
+   |
+2. Balance Service checks the immutable cache
+   |  - Historical balances are immutable and cached permanently
+   |
+3. If not cached, Balance Service queries TigerBeetle directly
+   |
+4. Response includes debits_posted, credits_posted, and timestamp
+```
+
+### Idempotency and Recovery
+
+Every event carries a UUIDv7 `event_id` that serves as the idempotency key. If the client never receives a success response (timeout, crash, network error), the outbox recovery system detects the PREPARED record and completes processing automatically.
+
+```text
+Normal path:      PREPARED ---> COMMITTED ---> PUBLISHED
+Recovery path:    PREPARED ---> (outbox poller detects) ---> COMMITTED ---> PUBLISHED
+Duplicate:        event_id already exists ---> return existing result
+```
+
+## Technology Stack
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **Event Service** | Go | High-throughput event processing with CEL template evaluation |
+| **Balance Service** | Go | Low-latency balance queries with caching |
+| **Ledger Service** | Python | Reference data CRUD with rich validation |
+| **Transfer Storage** | TigerBeetle | Purpose-built financial database for atomic transfers and balance tracking |
+| **Reference Data Storage** | PostgreSQL | Relational storage for entities, ledgers, accounts, and account codes |
+| **Template Storage** | S3 | Versioned template documents with content hashing |
+| **Event Store** | S3 | Durable storage for processed event envelopes |
+| **Balance Cache** | In-memory | Caches immutable historical balances for sub-millisecond reads |
+
+### Why TigerBeetle?
+
+TigerBeetle is a purpose-built database for financial transactions. It provides:
+
+- **Strict serializability** -- transfers are ordered and isolated without application-level locking
+- **Atomic batches** -- all transfers in an event commit or none do, with no partial writes
+- **Deterministic execution** -- same inputs always produce the same outputs
+- **Built-in deduplication** -- duplicate transfer IDs are rejected at the storage layer
+- **High throughput** -- designed for millions of transfers per second on commodity hardware
+
+## Hexagonal Architecture
+
+All services follow the hexagonal architecture pattern (also called ports and adapters). This pattern separates business logic from infrastructure concerns.
+
+```text
++------------------------------------------------------------------+
+|                        HTTP / gRPC Layer                          |
+|                     (handlers, middleware)                        |
++---------------------------+--------------------------------------+
+                            |
+                            v
++---------------------------+--------------------------------------+
+|                        Service Layer                             |
+|                   (business logic, rules)                        |
+|                                                                  |
+|  - No framework imports                                          |
+|  - No database drivers                                           |
+|  - Pure domain logic + interfaces (ports)                        |
++------+---------------------+---------------------+--------------+
+       |                     |                     |
+       v                     v                     v
++------+------+   +----------+--------+   +--------+---------+
+| Ledger      |   | TigerBeetle       |   | Template Store   |
+| Service     |   | Adapter           |   | Adapter          |
+| Adapter     |   | (transfers)       |   | (S3)             |
+| (HTTP)      |   |                   |   |                  |
++-------------+   +-------------------+   +------------------+
+```
+
+### Why This Pattern?
+
+1. **Testability.** The domain layer depends only on interfaces. Tests can substitute any adapter with a mock or fake without touching the business logic.
+
+2. **Portability.** Swapping a backing store (e.g., replacing S3 with a local filesystem for development) requires only a new adapter. The service layer does not change.
+
+3. **Separation of concerns.** HTTP serialization, database queries, and cache logic live in adapters. The service layer contains only business rules.
+
+4. **Dependency direction.** Adapters depend on the domain. The domain never depends on adapters. This prevents infrastructure details from leaking into business logic.
+
+## API Conventions
+
+### REST and OpenAPI 3.1
+
+All services expose REST APIs defined with OpenAPI 3.1 specifications. The running services serve their spec at `GET /openapi.json` and interactive documentation at `GET /docs`.
+
+### Base URLs
+
+| Service | Development | Path Prefix |
+|---------|-------------|-------------|
+| Ledger Service | `https://ledger.dev.ledgerrocket.com` | `/v2/ledger` |
+| Event Service | `https://ledger.dev.ledgerrocket.com` | `/v2/event-service` |
+| Balance Service | `https://ledger.dev.ledgerrocket.com` | `/v2/balance-service` |
+
+### Error Responses (RFC 9457)
+
+All HTTP error responses follow RFC 9457 Problem Details. The `type` field is a stable URI that identifies the error category. The `detail` field provides a human-readable explanation.
+
+```json
+{
+  "type": "https://ledger-rocket.dev/event-service/problems/validation/invalid-amount",
+  "title": "Unprocessable Entity",
+  "status": 422,
+  "detail": "Event amount must be a positive integer in minor units",
+  "instance": "/api/v1/events"
+}
+```
+
+Content-Type for errors: `application/problem+json; charset=utf-8`
+
+### JSON Schema 2020-12
+
+All schema definitions (template metadata schemas, request/response validation) use JSON Schema 2020-12 with an explicit `$schema` field:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "reference": { "type": "string" }
+  }
+}
+```
+
+### Timestamps
+
+All timestamps are Unix time in milliseconds (milliseconds since January 1, 1970 00:00:00 UTC). Never ISO-8601 strings.
+
+```json
+{
+  "occurred_at": 1711612800000,
+  "created_at": 1711612800000
+}
+```
+
+### Monetary Amounts
+
+All monetary amounts are integer minor units. For USD (scale 2), the value `150000` represents $1,500.00. For JPY (scale 0), the value `1500` represents 1,500 yen. No floating-point numbers exist anywhere in the money path.
+
+Balance responses encode amounts as strings to avoid JSON integer precision limits:
+
+```json
+{
+  "debits_posted": "150000",
+  "credits_posted": "0"
+}
+```
+
+### Identifiers
+
+| Field | Format | Example |
+|-------|--------|---------|
+| `event_id` | UUIDv7 (time-ordered) | `01956a3b-c4d5-7e6f-8901-234567890abc` |
+| `account_id` | UUID | `7c9e6679-7425-40de-944b-e07fc1f90ae7` |
+| `site_id` | Positive integer | `1` |
+| `template_id` | u16 (1-65535) | `532` |
+| `ledger_id` | u32 | `100` |
+
+### Idempotency
+
+The `event_id` is the idempotency key for event submission. Submitting the same `event_id` twice is safe -- the second request returns the existing result without creating duplicate transfers. On failure (timeout, 5xx, connection error), always retry with the same `event_id`.
+
+## Next Steps
+
+- [Platform Overview](01-platform-overview.md) -- what LedgerRocket is and who it is for
+- [Quickstart](02-quickstart.md) -- end-to-end tutorial with curl examples
+- [Authentication](03-authentication.md) -- API key management and security

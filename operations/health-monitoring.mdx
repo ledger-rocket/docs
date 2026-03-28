@@ -1,0 +1,143 @@
+---
+title: "Health Checks and Monitoring"
+description: "How to monitor the health of LedgerRocket services in production."
+---
+
+How to monitor the health of LedgerRocket services in production.
+
+## Health Endpoints
+
+All services expose standard health check endpoints:
+
+| Endpoint | Purpose | Returns |
+|----------|---------|---------|
+| `/health` or `/` | Basic reachability check | `200 OK` if the process is running |
+| `/livez` | Kubernetes liveness probe | `200` if the process is alive; `503` if it should be restarted |
+| `/readyz` | Kubernetes readiness probe | `200` with detailed status if ready to serve traffic; `503` if not |
+
+### Event Service
+
+```bash
+# Basic health
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/" \
+  -H "x-api-key: lr-test-20250701" | jq .
+
+# Liveness
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/livez" \
+  -H "x-api-key: lr-test-20250701" | jq .
+
+# Readiness (detailed)
+curl -s "https://ledger.dev.ledgerrocket.com/v2/event-service/readyz" \
+  -H "x-api-key: lr-test-20250701" | jq .
+```
+
+### Balance Service
+
+```bash
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/livez" \
+  -H "x-api-key: lr-test-20250701" | jq .
+
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/readyz" \
+  -H "x-api-key: lr-test-20250701" | jq .
+```
+
+## Readiness Response Structure
+
+The `/readyz` endpoint returns the richest operational data. Key fields:
+
+```json
+{
+  "status": "healthy",
+  "version": "v6.55.0",
+  "uptime": 86400,
+  "checks": {
+    "customer_cache": {
+      "status": "up",
+      "message": "accounts=1234 entities=56 size=12MB/64MB"
+    },
+    "platform_cache": {
+      "status": "up",
+      "message": "ledgers=8 entities=12 currencies=3 account_codes=45 accounts=2340 countries=1"
+    },
+    "event_outbox": {
+      "status": "up",
+      "message": "prepared=0 committed=2 published=15432 failed=0 total=15434"
+    },
+    "template_store": {
+      "status": "up",
+      "message": "templates=51 last_reload=1705315800"
+    }
+  },
+  "failed_templates": []
+}
+```
+
+| Field | What It Tells You |
+|-------|-------------------|
+| `status` | Overall health: `healthy` or `degraded` |
+| `version` | Deployed service version |
+| `uptime` | Seconds since process start |
+| `checks.customer_cache.message` | Account/entity count and memory usage vs limit |
+| `checks.platform_cache.message` | Reference data counts (ledgers, entities, currencies, account codes) |
+| `checks.event_outbox.message` | Outbox state counters (see [Outbox Pattern](03-outbox-pattern.md)) |
+| `checks.template_store.message` | Loaded template count and last reload timestamp |
+| `failed_templates` | Array of template paths that failed to load -- should always be empty |
+
+## ALB Health Check Configuration
+
+For AWS Application Load Balancer health checks:
+
+- **Path:** `/livez`
+- **Interval:** 30 seconds
+- **Timeout:** 5 seconds
+- **Healthy threshold:** 2 consecutive successes
+- **Unhealthy threshold:** 3 consecutive failures
+
+Use `/livez` for the ALB, not `/readyz`. The readiness probe performs deeper checks (cache state, outbox health) that may briefly fail during deployments or cache refreshes without indicating the process should be taken out of rotation permanently.
+
+## Key Metrics to Monitor
+
+### Event Processing
+
+- **Outbox prepared count** -- events accepted but not yet committed to TigerBeetle. Should stay near zero.
+- **Outbox failed count** -- events that failed processing. Any non-zero value requires investigation.
+- **Oldest prepared age** -- how long the oldest prepared event has been waiting. Alerts if > 30 seconds.
+- **Oldest committed age** -- how long the oldest committed event has been waiting for publish. Alerts if > 60 seconds.
+
+### Cache Health
+
+- **Customer cache size** -- memory usage vs configured maximum. Alert if > 80% of limit.
+- **Platform cache entity/account counts** -- should match expected reference data. A sudden drop indicates a Ledger Service connectivity issue.
+
+### Template Store
+
+- **Failed templates count** -- must be zero in production. Any failure means events using that template will be rejected.
+- **Last reload timestamp** -- verify it is recent if templates were recently updated.
+
+### Balance Service
+
+```bash
+# Cache statistics
+curl -s "https://ledger.dev.ledgerrocket.com/v2/balance-service/api/v1/cache/stats" \
+  -H "x-api-key: lr-test-20250701" | jq .
+```
+
+Monitor cache hit rates -- a low hit rate may indicate the cache is too small or access patterns have changed.
+
+## Quick Health Check Script
+
+```bash
+API_KEY="lr-test-20250701"
+BASE="https://ledger.dev.ledgerrocket.com/v2"
+
+for svc in event-service balance-service; do
+  echo "=== $svc ==="
+  curl -s "$BASE/$svc/readyz" -H "x-api-key: $API_KEY" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+print(f'  Status: {d.get(\"status\", \"unknown\")}  Version: {d.get(\"version\", \"?\")}')
+for name, c in d.get('checks', {}).items():
+    print(f'  {name}: [{c[\"status\"]}] {c[\"message\"]}')
+" 2>/dev/null || echo "  UNREACHABLE"
+done
+```
