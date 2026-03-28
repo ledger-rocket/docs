@@ -3,12 +3,12 @@ title: "Quickstart"
 description: "This guide walks through the core workflow: creating reference data, defining an accounting template, submitting a financial event, and querying the results. All examples use curl against the dev e..."
 ---
 
-This guide walks through the core workflow: creating reference data, defining an accounting template, submitting a financial event, and querying the results. All examples use `curl` against the dev environment.
+This guide walks through the core workflow: creating reference data, defining an accounting template, submitting a financial event, and querying the results. Examples show both `curl` and `lrctl` CLI.
 
 ## Prerequisites
 
-- An API key (see [Authentication](03-authentication.md))
-- `curl` and `jq` installed
+- An API key (see [Authentication](/getting-started/authentication))
+- `curl` and `jq` installed, or the [`lrctl` CLI](/getting-started/sdks-and-tools)
 
 ## Base URLs
 
@@ -31,7 +31,8 @@ API_KEY="your-api-key-here"
 
 A site is the top-level tenant boundary. All data is isolated within a site.
 
-```bash
+<CodeGroup>
+```bash curl
 curl -s -X POST "$LEDGER_URL/api/v1/sites" \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
@@ -40,6 +41,11 @@ curl -s -X POST "$LEDGER_URL/api/v1/sites" \
     "description": "Production site for Acme"
   }' | jq .
 ```
+
+```bash lrctl
+lrctl sites create --name "Acme Payments" --description "Production site for Acme"
+```
+</CodeGroup>
 
 Expected response:
 
@@ -62,7 +68,8 @@ SITE_ID=1
 
 Entities represent real-world actors -- companies, individuals, or custodians. Create a company entity (the platform operator) and a customer entity.
 
-```bash
+<CodeGroup>
+```bash curl
 # Create the platform company entity
 curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/entities" \
   -H "Content-Type: application/json" \
@@ -74,6 +81,12 @@ curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/entities" \
   }' | jq .
 ```
 
+```bash lrctl
+lrctl entities create --site-id $SITE_ID \
+  --name "Acme Payments Inc." --entity-type company --kyc-status verified
+```
+</CodeGroup>
+
 ```json
 {
   "entity_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -84,7 +97,8 @@ curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/entities" \
 }
 ```
 
-```bash
+<CodeGroup>
+```bash curl
 # Create a customer entity
 curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/entities" \
   -H "Content-Type: application/json" \
@@ -96,6 +110,12 @@ curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/entities" \
   }' | jq .
 ```
 
+```bash lrctl
+lrctl entities create --site-id $SITE_ID \
+  --name "Jane Smith" --entity-type individual --kyc-status verified
+```
+</CodeGroup>
+
 ```bash
 COMPANY_ENTITY_ID="a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 CUSTOMER_ENTITY_ID="b2c3d4e5-f6a7-8901-bcde-f12345678901"
@@ -105,7 +125,8 @@ CUSTOMER_ENTITY_ID="b2c3d4e5-f6a7-8901-bcde-f12345678901"
 
 Account codes define your chart of accounts. Create asset and liability codes.
 
-```bash
+<CodeGroup>
+```bash curl
 # Asset account code (for customer wallets)
 curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/account-codes" \
   -H "Content-Type: application/json" \
@@ -129,11 +150,21 @@ curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/account-codes" \
   }' | jq .
 ```
 
+```bash lrctl
+lrctl accounts create-code --site-id $SITE_ID \
+  --code 1001 --name "Customer Wallet" --account-type ASSET --has-rollup
+
+lrctl accounts create-code --site-id $SITE_ID \
+  --code 2001 --name "Customer Liability" --account-type LIABILITY
+```
+</CodeGroup>
+
 ## Step 4: Create a Ledger
 
 A ledger is scoped to one entity and one currency. All accounts and transfers within a ledger share that scope.
 
-```bash
+<CodeGroup>
+```bash curl
 curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/ledgers" \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
@@ -142,6 +173,12 @@ curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/ledgers" \
     "currency_code": "USD"
   }' | jq .
 ```
+
+```bash lrctl
+lrctl ledgers create --site-id $SITE_ID \
+  --entity-id $COMPANY_ENTITY_ID --currency-code USD
+```
+</CodeGroup>
 
 ```json
 {
@@ -160,7 +197,8 @@ LEDGER_ID=100
 
 Create two accounts on the ledger: a sender account and a receiver account. Accounts carry dimensional attributes and reference an account code.
 
-```bash
+<CodeGroup>
+```bash curl
 # Sender account (asset)
 curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/accounts" \
   -H "Content-Type: application/json" \
@@ -174,6 +212,13 @@ curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/accounts" \
   }' | jq .
 ```
 
+```bash lrctl
+lrctl accounts create --site-id $SITE_ID --ledger-id $LEDGER_ID \
+  --entity-id $COMPANY_ENTITY_ID --custodian-entity-id $COMPANY_ENTITY_ID \
+  --account-code 1001 --name "Acme Operating Account"
+```
+</CodeGroup>
+
 ```json
 {
   "account_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
@@ -184,7 +229,8 @@ curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/accounts" \
 }
 ```
 
-```bash
+<CodeGroup>
+```bash curl
 # Receiver account (liability)
 curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/accounts" \
   -H "Content-Type: application/json" \
@@ -197,6 +243,13 @@ curl -s -X POST "$LEDGER_URL/api/v1/sites/$SITE_ID/accounts" \
     "name": "Jane Smith Wallet"
   }' | jq .
 ```
+
+```bash lrctl
+lrctl accounts create --site-id $SITE_ID --ledger-id $LEDGER_ID \
+  --entity-id $CUSTOMER_ENTITY_ID --custodian-entity-id $COMPANY_ENTITY_ID \
+  --account-code 2001 --name "Jane Smith Wallet"
+```
+</CodeGroup>
 
 ```bash
 SENDER_ACCOUNT_ID="7c9e6679-7425-40de-944b-e07fc1f90ae7"
@@ -265,7 +318,8 @@ Submit a financial event that references your template and accounts. The Event S
 
 The `event_id` must be a UUIDv7 (time-ordered). It also serves as the idempotency key -- safe to retry on failure.
 
-```bash
+<CodeGroup>
+```bash curl
 EVENT_ID=$(uuidgen)  # Use a UUIDv7 generator in production
 
 curl -s -X POST "$EVENT_URL/api/v1/events" \
@@ -294,6 +348,13 @@ curl -s -X POST "$EVENT_URL/api/v1/events" \
   }' | jq .
 ```
 
+```bash lrctl
+lrctl events submit --site-id $SITE_ID --template-ids 532 --amount 150000 \
+  --account sender:$SENDER_ACCOUNT_ID --account receiver:$RECEIVER_ACCOUNT_ID \
+  --metadata reference=INV-2026-001 --event-source quickstart
+```
+</CodeGroup>
+
 Expected response (HTTP 201):
 
 ```json
@@ -312,10 +373,16 @@ The `amount` of `150000` represents $1,500.00 (USD has scale 2, so amounts are i
 
 Retrieve the transfers generated by the event:
 
-```bash
+<CodeGroup>
+```bash curl
 curl -s "$EVENT_URL/api/v1/events/$EVENT_ID/transfers" \
   -H "x-api-key: $API_KEY" | jq .
 ```
+
+```bash lrctl
+lrctl transfers list --event-id $EVENT_ID
+```
+</CodeGroup>
 
 Expected response:
 
@@ -337,20 +404,32 @@ Expected response:
 
 For enriched transfers with resolved account names and entity details:
 
-```bash
+<CodeGroup>
+```bash curl
 curl -s "$EVENT_URL/api/v1/events/$EVENT_ID/transfers/enriched" \
   -H "x-api-key: $API_KEY" | jq .
 ```
+
+```bash lrctl
+lrctl transfers list --event-id $EVENT_ID --enriched
+```
+</CodeGroup>
 
 ## Step 9: Check Account Balances
 
 Query the balance for each account:
 
-```bash
+<CodeGroup>
+```bash curl
 # Sender account balance
 curl -s "$BALANCE_URL/api/v1/accounts/$SENDER_ACCOUNT_ID/balance" \
   -H "x-api-key: $API_KEY" | jq .
 ```
+
+```bash lrctl
+lrctl balances get --account-id $SENDER_ACCOUNT_ID
+```
+</CodeGroup>
 
 ```json
 {
@@ -361,11 +440,17 @@ curl -s "$BALANCE_URL/api/v1/accounts/$SENDER_ACCOUNT_ID/balance" \
 }
 ```
 
-```bash
+<CodeGroup>
+```bash curl
 # Receiver account balance
 curl -s "$BALANCE_URL/api/v1/accounts/$RECEIVER_ACCOUNT_ID/balance" \
   -H "x-api-key: $API_KEY" | jq .
 ```
+
+```bash lrctl
+lrctl balances get --account-id $RECEIVER_ACCOUNT_ID
+```
+</CodeGroup>
 
 ```json
 {
@@ -382,7 +467,8 @@ Note that amounts in balance responses are string-encoded integers in minor unit
 
 Use the dry-run endpoint to validate an event without committing transfers:
 
-```bash
+<CodeGroup>
+```bash curl
 curl -s -X POST "$EVENT_URL/api/v1/events:validate" \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
@@ -406,17 +492,33 @@ curl -s -X POST "$EVENT_URL/api/v1/events:validate" \
   }' | jq .
 ```
 
+```bash lrctl
+lrctl events validate --site-id $SITE_ID --template-ids 532 --amount 150000 \
+  --account sender:$SENDER_ACCOUNT_ID --account receiver:$RECEIVER_ACCOUNT_ID \
+  --metadata reference=INV-2026-002
+```
+</CodeGroup>
+
 For a detailed execution trace showing variable evaluation and leg resolution:
 
-```bash
+<CodeGroup>
+```bash curl
 curl -s -X POST "$EVENT_URL/api/v1/events:validate:explain" \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
   -d '{ ... same body ... }' | jq .
 ```
 
+```bash lrctl
+lrctl events validate --site-id $SITE_ID --template-ids 532 --amount 150000 \
+  --account sender:$SENDER_ACCOUNT_ID --account receiver:$RECEIVER_ACCOUNT_ID \
+  --metadata reference=INV-2026-002 --explain
+```
+</CodeGroup>
+
 ## Next Steps
 
-- [Authentication](03-authentication.md) -- API key management and security
-- [Architecture](04-architecture.md) -- how the services fit together
-- [Template Guide](../template-guide/) -- writing accounting templates with CEL expressions
+- [Authentication](/getting-started/authentication) -- API key management and security
+- [Architecture](/getting-started/architecture) -- how the services fit together
+- [SDKs & Tools](/getting-started/sdks-and-tools) -- CLI, MCP server, and client libraries
+- [Template Guide](/template-guide/template-structure) -- writing accounting templates with CEL expressions

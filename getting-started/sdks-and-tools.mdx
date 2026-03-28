@@ -1,0 +1,146 @@
+---
+title: "SDKs & Tools"
+description: "Client libraries, CLI, and MCP server for interacting with LedgerRocket"
+---
+
+LedgerRocket provides multiple ways to interact with the platform beyond the REST API.
+
+## CLI (`lrctl`)
+
+`lrctl` is LedgerRocket's command-line tool for managing sites, entities, accounts, templates, events, and balances.
+
+### Installation
+
+Download the latest release from your organisation's distribution channel, or install via Go:
+
+```bash
+go install github.com/ledger-rocket/ledger-rocket-cli@latest
+```
+
+### Configuration
+
+```bash
+# Set your environment and authenticate
+lrctl config set-env dev
+lrctl auth login
+```
+
+### Usage examples
+
+```bash
+# Sites
+lrctl sites list
+lrctl sites create --name "Acme Payments" --description "Production site for Acme"
+
+# Entities
+lrctl entities create --site-id 1 --name "Acme Inc." --entity-type company --kyc-status verified
+lrctl entities list --site-id 1
+
+# Ledgers & Accounts
+lrctl ledgers create --site-id 1 --entity-id $ENTITY_ID --currency-code USD
+lrctl accounts create --site-id 1 --ledger-id 100 --account-code 1001 --name "Operating Account"
+
+# Events
+lrctl events submit --site-id 1 --template-ids 532 --amount 150000 \
+  --account sender:$SENDER_ID --account receiver:$RECEIVER_ID
+lrctl events validate --site-id 1 --template-ids 532 --amount 150000 \
+  --account sender:$SENDER_ID --account receiver:$RECEIVER_ID
+
+# Transfers & Balances
+lrctl transfers list --event-id $EVENT_ID
+lrctl balances get --account-id $ACCOUNT_ID
+```
+
+## MCP Server
+
+The LedgerRocket MCP server allows AI assistants (Claude, Cursor, VS Code Copilot) to interact with the platform directly using natural language.
+
+The server auto-generates MCP tools from the OpenAPI specs of all four services, so every API endpoint is available as a tool.
+
+### Setup
+
+Add to your MCP client configuration (e.g. `claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "ledger-rocket": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "LR_API_KEY=your-api-key",
+        "-e", "LR_ENVIRONMENT=dev",
+        "ghcr.io/ledger-rocket/mcp-ledger-rocket:latest"
+      ]
+    }
+  }
+}
+```
+
+### Available tools
+
+Tools are generated from the API and follow the pattern `{operation}_{resource}`:
+
+| Tool | Description |
+|------|-------------|
+| `create_site` | Create a new tenant site |
+| `list_entities` | List entities within a site |
+| `create_account` | Create an account on a ledger |
+| `submit_event` | Submit a financial event |
+| `validate_event` | Dry-run validate an event |
+| `get_account_balance` | Query an account balance |
+| `get_event_transfers` | Retrieve transfers for an event |
+
+## Generated Client Libraries
+
+LedgerRocket services generate typed client libraries from their OpenAPI specifications.
+
+### Go
+
+Go clients are generated using `oapi-codegen` and live in each service repository. Import them directly:
+
+```go
+import (
+    ledger "github.com/ledger-rocket/ledger-service/clients/go"
+    events "github.com/ledger-rocket/event-service/clients/go"
+    balances "github.com/ledger-rocket/balance-service/clients/go"
+)
+
+// Create a client
+client, err := ledger.NewClientWithResponses(
+    "https://ledger.dev.ledgerrocket.com/v2/ledger",
+    ledger.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+        req.Header.Set("x-api-key", apiKey)
+        return nil
+    }),
+)
+
+// Create a site
+resp, err := client.CreateSiteWithResponse(ctx, ledger.CreateSiteJSONRequestBody{
+    Name:        "Acme Payments",
+    Description: ptr("Production site for Acme"),
+})
+```
+
+### Python & TypeScript
+
+Python and TypeScript clients are generated from OpenAPI specs and published to AWS CodeArtifact. See your organisation's internal documentation for CodeArtifact access configuration.
+
+```bash
+# Python (after configuring CodeArtifact)
+pip install ledger-rocket-client
+
+# TypeScript (after configuring CodeArtifact)
+npm install @ledger-rocket/client
+```
+
+## Choosing the right tool
+
+| Use case | Recommended tool |
+|----------|-----------------|
+| Exploring the API interactively | `lrctl` CLI |
+| AI-assisted development | MCP server |
+| Scripting and automation | REST API with `curl` |
+| Go application integration | Generated Go client |
+| Python/TypeScript applications | Generated client libraries |
+| CI/CD pipelines | REST API or `lrctl` |

@@ -20,7 +20,8 @@
               "getting-started/platform-overview",
               "getting-started/quickstart",
               "getting-started/authentication",
-              "getting-started/architecture"
+              "getting-started/architecture",
+              "getting-started/sdks-and-tools"
             ]
           },
           {
